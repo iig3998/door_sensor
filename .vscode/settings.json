@@ -1,0 +1,7 @@
+{
+    "idf.adapterTargetName": "esp32c3",
+    "files.associations": {
+        "*.inc": "c",
+        "esp_timer.h": "c"
+    }
+}
