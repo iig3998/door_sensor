@@ -1,7 +1,14 @@
 {
-    "idf.adapterTargetName": "esp32c3",
+    "idf.adapterTargetName": "esp32",
     "files.associations": {
         "*.inc": "c",
-        "esp_timer.h": "c"
+        "esp_timer.h": "c",
+        "esp_now.h": "c",
+        "esp_wifi.h": "c",
+        "ulp_main.h": "c",
+        "inttypes.h": "c",
+        "uart.h": "c",
+        "esp_system.h": "c",
+        "freertos.h": "c"
     }
 }
