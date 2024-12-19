@@ -190,6 +190,10 @@ static void init_ulp_program(void) {
         ESP_LOGE(TAG_MAIN, "Error, ulp program not started");
     }
 
+    /* Configure led */
+    gpio_set_level(GPIO_NUM_22, 1);
+    gpio_set_direction(GPIO_NUM_22, GPIO_MODE_OUTPUT);
+
     return;
 }
 
