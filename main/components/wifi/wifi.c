@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-//#include <freertos/FreeRTOS.h>
-//#include <freertos/event_groups.h>
-
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_err.h"
@@ -19,7 +16,7 @@ void print_wifi_version() {
     return;
 }
 
-/* */
+/* Init wifi in station mode */
 esp_err_t wifi_init_sta() {
 
     esp_err_t err = ESP_FAIL;
@@ -31,12 +28,11 @@ esp_err_t wifi_init_sta() {
         return ESP_FAIL;
     }
 
-    /*
     err = esp_event_loop_create_default();
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, event loop not init");
         return ESP_FAIL;
-    }*/
+    }
 
     /* Set wifi init configuration */
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
