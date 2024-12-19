@@ -81,23 +81,51 @@ static void init_ulp_program(void) {
     rtc_gpio_pulldown_dis(gpio_num);
     rtc_gpio_pullup_en(gpio_num);
 
-    /* Reset all gpio */
+    /* Isolate all gpio */
     gpio_reset_pin(GPIO_NUM_0);
+    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_2);
+    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_4);
+    gpio_set_direction(GPIO_NUM_4, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_13);
-    gpio_reset_pin(GPIO_NUM_14);
+    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_13);
+    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_25);
+    gpio_set_direction(GPIO_NUM_25, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_26);
+    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_27);
-    gpio_reset_pin(GPIO_NUM_32);
+    gpio_set_direction(GPIO_NUM_27, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_33);
+    gpio_set_direction(GPIO_NUM_33, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_34);
+    gpio_set_direction(GPIO_NUM_34, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_35);
+    gpio_set_direction(GPIO_NUM_35, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_36);
+    gpio_set_direction(GPIO_NUM_36, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_37);
+    gpio_set_direction(GPIO_NUM_37, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_38);
+    gpio_set_direction(GPIO_NUM_38, GPIO_MODE_DISABLE);
+
     gpio_reset_pin(GPIO_NUM_39);
+    gpio_set_direction(GPIO_NUM_39, GPIO_MODE_DISABLE);
 
     /* Disconnect GPIO12 and GPIO15 to remove current drain through
      * pullup/pulldown resistors on modules which have these (e.g. ESP32-WROVER)
