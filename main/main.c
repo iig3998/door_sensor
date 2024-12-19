@@ -200,25 +200,24 @@ static void door_sensor_task() {
     esp_sleep_wakeup_cause_t wakeup_reason;
     node_id_alarm pkt;
 
+    ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
 
-        ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
-
-        wakeup_reason = esp_sleep_get_wakeup_cause();
-        switch (wakeup_reason) {
-            case ESP_SLEEP_WAKEUP_ULP:
-                ESP_LOGI(TAG_MAIN, "Wakeup from ulp");
-                break;
-            case ESP_SLEEP_WAKEUP_TIMER:
-                ESP_LOGI(TAG_MAIN, "Wakeup from timer");
-                break;
-            default:
-                ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
+    wakeup_reason = esp_sleep_get_wakeup_cause();
+    switch (wakeup_reason) {
+        case ESP_SLEEP_WAKEUP_ULP:
+            ESP_LOGI(TAG_MAIN, "Wakeup from ulp");
             break;
-        }
-
-        /* Send packet */
-        memset(&pkt, 0, sizeof(pkt));
-        pkt = set_alarm_sensor(ID_SENSOR, read_status_sensor, esp_timer_get_time());
+        case ESP_SLEEP_WAKEUP_TIMER:
+            ESP_LOGI(TAG_MAIN, "Wakeup from timer");
+            break;
+        case ESP_SLEEP_WAKEUP_GPIO:
+            ESP_LOGI(TAG_MAIN, "Wakeup from gpio");
+            ESP_LOGI(TAG_MAIN, "State gpio 32: %u", read_reed_switch());
+            break;
+        default:
+            ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
+        break;
+    }
 
         for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
             esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
