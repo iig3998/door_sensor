@@ -244,13 +244,15 @@ static void door_sensor_task() {
         ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
     }
 
+    ESP_LOGI(TAG_MAIN, "Start deep sleep mode");
+    ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
 
-        ESP_LOGI(TAG_MAIN, "Start deep sleep mode");
+    vTaskDelay(pdMS_TO_TICKS(50));
 
-        ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
+    /* Start deep sleep mode */
+    esp_deep_sleep_start();
 
-        /* Start deep sleep mode */
-        esp_deep_sleep_start();
+    return;
 }
 
 static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status) {
