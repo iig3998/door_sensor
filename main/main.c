@@ -174,12 +174,8 @@ static void init_ulp_program(void) {
     gpio_reset_pin(GPIO_NUM_39);
     gpio_set_direction(GPIO_NUM_39, GPIO_MODE_DISABLE);
 
-    /* Disconnect GPIO12 and GPIO15 to remove current drain through
-     * pullup/pulldown resistors on modules which have these (e.g. ESP32-WROVER)
-     * GPIO12 may be pulled high to select flash voltage.
-     */
-    rtc_gpio_isolate(GPIO_NUM_12);
-    rtc_gpio_isolate(GPIO_NUM_15);
+    //rtc_gpio_isolate(GPIO_NUM_12);
+    //rtc_gpio_isolate(GPIO_NUM_15);
 
     /* Suppress boot messages */
     esp_deep_sleep_disable_rom_logging();
