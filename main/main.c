@@ -73,6 +73,30 @@ static bool read_reed_switch() {
     return false;
 }
 
+/* Configure reed switch */
+void configure_reed_switch(void) {
+
+    /* Reset the pin */
+    gpio_reset_pin(GPIO_NUM_32);
+
+    /* Set the GPIOs to input mode */
+    gpio_set_direction(GPIO_NUM_32, GPIO_MODE_INPUT);
+
+    /* Enable Pullup for Input Pin */
+    gpio_pullup_en(GPIO_NUM_32);
+
+    /* Disable pulldown for Input Pin */
+    gpio_pulldown_dis(GPIO_NUM_32);
+
+    /* Configure raising/falling Edge detection Interrupt for Input Pin */
+    //gpio_set_intr_type(GPIO_NUM_32, GPIO_INTR_ANYEDGE);
+
+    /* Install gpio isr service to default values */
+    //gpio_install_isr_service(0);
+
+    gpio_wakeup_enable(GPIO_NUM_32, GPIO_INTR_HIGH_LEVEL);
+}
+
 /* Init ulp program */
 static void init_ulp_program(void) {
 
