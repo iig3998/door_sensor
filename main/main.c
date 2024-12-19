@@ -296,6 +296,8 @@ void app_main() {
     esp_err_t err = ESP_FAIL;
     esp_now_peer_info_t peer;
     
+    ESP_LOGI(TAG_MAIN, "Start main program");
+
     err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
