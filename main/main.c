@@ -182,7 +182,7 @@ static void init_ulp_program(void) {
     rtc_gpio_isolate(GPIO_NUM_15);
 
     /* Suppress boot messages */
-    //esp_deep_sleep_disable_rom_logging();
+    esp_deep_sleep_disable_rom_logging();
 
     /* Start the program */
     err = ulp_run(&ulp_entry - RTC_SLOW_MEM);
