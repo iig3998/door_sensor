@@ -31,6 +31,7 @@ node_id_cmd build_command(uint8_t id, enum node_type st, enum cmd_type ct, int64
 
     node_id_cmd pkt;
 
+    memset(&pkt, 0, sizeof(pkt));
     pkt.id = id;
 
     pkt.node = st;
