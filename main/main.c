@@ -204,7 +204,6 @@ static void door_sensor_task() {
     esp_sleep_wakeup_cause_t wakeup_reason;
     node_id_alarm pkt;
 
-    while(1) {
 
         ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
 
@@ -251,7 +250,6 @@ static void door_sensor_task() {
 
         /* Start deep sleep mode */
         esp_deep_sleep_start();
-    }
 }
 
 static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status) {
