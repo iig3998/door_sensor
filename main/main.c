@@ -232,11 +232,18 @@ static void door_sensor_task() {
     }
     gpio_set_level(GPIO_NUM_22, 0);
 
-        /* Enable timer wakeup */
-        err = esp_sleep_enable_timer_wakeup(10 * 1000000);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
-        }
+    /* Enable ULP wakeup */
+    err = esp_sleep_enable_ulp_wakeup();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from ulp not enable");
+    }
+
+    /* Enable timer wakeup every 30 seconds */
+    err = esp_sleep_enable_timer_wakeup(1 * 1000000);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
+    }
+
 
         ESP_LOGI(TAG_MAIN, "Start deep sleep mode");
 
