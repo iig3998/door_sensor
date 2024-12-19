@@ -219,19 +219,18 @@ static void door_sensor_task() {
         break;
     }
 
-        for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
-            esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG_MAIN, "Error, data not sent");
-            }
-            vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
-        }
+    /* Send packet */
+    memset(&pkt, 0, sizeof(pkt));
+    pkt = set_alarm_sensor(ID_SENSOR, read_status_sensor(), esp_timer_get_time());
 
-        /* Enable ULP wakeup */
-        err = esp_sleep_enable_ulp_wakeup();
+    for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
+        err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
         if (err != ESP_OK) {
-            ESP_LOGE(TAG_MAIN, "Error, wakeup from ulp not enable");
+            ESP_LOGE(TAG_MAIN, "Error, data not sent");
         }
+        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
+    }
+    gpio_set_level(GPIO_NUM_22, 0);
 
         /* Enable timer wakeup */
         err = esp_sleep_enable_timer_wakeup(10 * 1000000);
