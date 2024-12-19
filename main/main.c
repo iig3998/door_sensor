@@ -281,6 +281,15 @@ __attribute__((constructor)) void pre_app_main() {
     return;
 }
 
+void test_reed_switch() {
+
+    while(1) {
+        ESP_LOGI(TAG_MAIN, "%u", read_status_sensor());
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+}
+
 /* Main program */
 void app_main() {
     
