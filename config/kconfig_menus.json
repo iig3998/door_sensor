@@ -16203,10 +16203,7 @@
                         "help": "The value of this option determines the calibration interval of the RTC_FAST/SLOW clock during sleep when\npower management is enabled. When it is configured as N, the RTC_FAST/SLOW clock will be calibrated\nevery N times of lightsleep.\nDecreasing this value will increase the time the chip is in the active state, thereby increasing the\naverage power consumption of the chip.\nIncreasing this value can reduce the average power consumption, but when the external environment changes\ndrastically and the chip RTC_FAST/SLOW oscillator frequency drifts, it may cause system instability.",
                         "id": "PM_LIGHTSLEEP_RTC_OSC_CAL_INTERVAL",
                         "name": "PM_LIGHTSLEEP_RTC_OSC_CAL_INTERVAL",
-                        "range": [
-                            1,
-                            128
-                        ],
+                        "range": null,
                         "title": "Calibrate the RTC_FAST/SLOW clock every N times of light sleep",
                         "type": "int"
                     },
@@ -17553,7 +17550,7 @@
                         "name": "ESP_CONSOLE_UART_BAUDRATE",
                         "range": [
                             1200,
-                            1000000
+                            4000000
                         ],
                         "title": "UART console baud rate",
                         "type": "int"
@@ -18746,10 +18743,7 @@
                                 "help": "Timeout time for close rf phy when beacon loss occurs, Unit: 1024 microsecond.",
                                 "id": "ESP_WIFI_SLP_BEACON_LOST_TIMEOUT",
                                 "name": "ESP_WIFI_SLP_BEACON_LOST_TIMEOUT",
-                                "range": [
-                                    5,
-                                    100
-                                ],
+                                "range": null,
                                 "title": "Beacon loss timeout",
                                 "type": "int"
                             },
@@ -18759,10 +18753,7 @@
                                 "help": "Maximum number of consecutive lost beacons allowed, WiFi keeps Rx state when\nthe number of consecutive beacons lost is greater than the given threshold.",
                                 "id": "ESP_WIFI_SLP_BEACON_LOST_THRESHOLD",
                                 "name": "ESP_WIFI_SLP_BEACON_LOST_THRESHOLD",
-                                "range": [
-                                    0,
-                                    8
-                                ],
+                                "range": null,
                                 "title": "Maximum number of consecutive lost beacons allowed",
                                 "type": "int"
                             },
@@ -18772,10 +18763,7 @@
                                 "help": "Delta early time for rf phy on, When the beacon is lost, the next rf phy on will\nbe earlier the time specified by the configuration item, Unit: 32 microsecond.",
                                 "id": "ESP_WIFI_SLP_PHY_ON_DELTA_EARLY_TIME",
                                 "name": "ESP_WIFI_SLP_PHY_ON_DELTA_EARLY_TIME",
-                                "range": [
-                                    0,
-                                    100
-                                ],
+                                "range": null,
                                 "title": "Delta early time for RF PHY on",
                                 "type": "int"
                             },
@@ -18785,10 +18773,7 @@
                                 "help": "Delta timeout time for rf phy off, When the beacon is lost, the next rf phy off will\nbe delayed for the time specified by the configuration item. Unit: 1024 microsecond.",
                                 "id": "ESP_WIFI_SLP_PHY_OFF_DELTA_TIMEOUT_TIME",
                                 "name": "ESP_WIFI_SLP_PHY_OFF_DELTA_TIMEOUT_TIME",
-                                "range": [
-                                    0,
-                                    8
-                                ],
+                                "range": null,
                                 "title": "Delta timeout time for RF PHY off",
                                 "type": "int"
                             }
@@ -20454,10 +20439,7 @@
                                         "help": "FreeRTOS will enter light sleep mode if no tasks need to run for this number of ticks.\nYou can enable PM_PROFILING feature in esp_pm components and dump the sleep status with\nesp_pm_dump_locks, if the proportion of rejected sleeps is too high, please increase\nthis value to improve scheduling efficiency",
                                         "id": "FREERTOS_IDLE_TIME_BEFORE_SLEEP",
                                         "name": "FREERTOS_IDLE_TIME_BEFORE_SLEEP",
-                                        "range": [
-                                            2,
-                                            4294967295
-                                        ],
+                                        "range": null,
                                         "title": "configEXPECTED_IDLE_TIME_BEFORE_SLEEP",
                                         "type": "int"
                                     }
@@ -27385,10 +27367,7 @@
                                 "help": "Bytes of memory to reserve for ULP Co-processor firmware & data.\nData is reserved at the beginning of RTC slow memory.",
                                 "id": "ULP_COPROC_RESERVE_MEM",
                                 "name": "ULP_COPROC_RESERVE_MEM",
-                                "range": [
-                                    32,
-                                    8176
-                                ],
+                                "range": null,
                                 "title": "RTC slow memory reserved for coprocessor",
                                 "type": "int"
                             }
