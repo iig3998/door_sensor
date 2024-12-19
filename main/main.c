@@ -50,6 +50,29 @@ static bool read_status_sensor() {
     return false;
 }
 
+/* Read reed switch status */
+static bool read_reed_switch() {
+
+    uint8_t gpio_new_state = 1;
+    uint8_t gpio_old_state = 1;
+    uint8_t counter = 0;
+
+    while (counter < 5) {
+        gpio_new_state = rtc_gpio_get_level(GPIO_NUM_32);
+        if (gpio_new_state != gpio_old_state) {
+            counter = 0;
+        } else {
+            counter ++;
+        }
+        gpio_old_state = gpio_new_state;
+    }
+
+    if (!gpio_new_state)
+        return true;
+
+    return false;
+}
+
 /* Init ulp program */
 static void init_ulp_program(void) {
 
