@@ -11,12 +11,10 @@ Follow detailed instructions provided specifically for this example.
 Select the instructions depending on Espressif chip installed on your development board:
 
 - [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
-- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
 
+## Folder contents
 
-## Example folder contents
-
-The project **hello_world** contains one source file in C language [hello_world_main.c](main/hello_world_main.c). The file is located in folder [main](main).
+The project **door_sensor** contains one source file in C language [hello_world_main.c](main/hello_world_main.c). The file is located in root directory.
 
 ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both). 
 
