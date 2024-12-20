@@ -171,7 +171,7 @@ static void door_sensor_task() {
     gpio_set_level(GPIO_NUM_22, 0);
 
     /* Enable timer wakeup every 30 seconds */
-    err = esp_sleep_enable_timer_wakeup(1 * 1000000);
+    err = esp_sleep_enable_timer_wakeup(100 * 1000000);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
     }
