@@ -43,7 +43,7 @@ static bool read_reed_switch() {
     uint8_t counter = 0;
 
     while (counter < 3) {
-        gpio_new_state = rtc_gpio_get_level(GPIO_NUM_32);
+        gpio_new_state = gpio_get_level(GPIO_NUM_32);
         if (gpio_new_state != gpio_old_state) {
             counter = 0;
         } else {
@@ -159,7 +159,7 @@ static void door_sensor_task() {
 
     /* Send packet */
     memset(&pkt, 0, sizeof(pkt));
-    pkt = set_alarm_sensor(ID_SENSOR, read_status_sensor(), esp_timer_get_time());
+    pkt = set_alarm_sensor(ID_SENSOR, read_reed_switch(), esp_timer_get_time());
 
     for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
         err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
@@ -170,16 +170,10 @@ static void door_sensor_task() {
     }
     gpio_set_level(GPIO_NUM_22, 0);
 
-    /* Enable timer wakeup every 30 seconds */
-    err = esp_sleep_enable_timer_wakeup(100 * 1000000);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
-    }
-
     ESP_LOGI(TAG_MAIN, "Start deep sleep mode");
     ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
 
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     /* Start deep sleep mode */
     esp_deep_sleep_start();
@@ -207,9 +201,28 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
+    esp_err_t err = ESP_FAIL;
+
     ESP_LOGI(TAG_MAIN, "Start pre app main");
 
     /* Init ulp program */
+    init_gpio();
+
+    /* Enable timer wakeup every 30 seconds */
+    err = esp_sleep_enable_timer_wakeup(100 * 1000000);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from GPIO not enable");
+        return;
+    }
+
+    /* Set wakeup gpio */
+    err = gpio_wakeup_enable(GPIO_NUM_32, GPIO_INTR_HIGH_LEVEL);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
+        return;
+    }
+
+    esp_sleep_enable_gpio_wakeup();
 
     return;
 }
@@ -217,7 +230,7 @@ __attribute__((constructor)) void pre_app_main() {
 void test_reed_switch() {
 
     while(1) {
-        ESP_LOGI(TAG_MAIN, "%u", read_status_sensor());
+        ESP_LOGI(TAG_MAIN, "%u", read_reed_switch());
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
