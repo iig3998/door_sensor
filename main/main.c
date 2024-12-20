@@ -24,9 +24,6 @@
 #include "driver/rtc_io.h"
 #include "driver/uart.h"
 
-#include "ulp.h"
-#include "ulp_main.h"
-
 #include "sensor.h"
 #include "wifi.h"
 
@@ -36,19 +33,7 @@
 #define NUMBER_ATTEMPTS       3
 #define RETRASMISSION_TIME_MS 150
 
-extern const uint8_t ulp_main_bin_start[] asm("_binary_ulp_main_bin_start");
-extern const uint8_t ulp_main_bin_end[] asm("_binary_ulp_main_bin_end");
-
 static uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-/* Read status sensor */
-static bool read_status_sensor() {
-
-    if (ulp_prev_state & UINT16_MAX)
-        return true;
-
-    return false;
-}
 
 /* Read reed switch status */
 static bool read_reed_switch() {
@@ -98,23 +83,12 @@ void configure_reed_switch(void) {
 }
 
 /* Init ulp program */
-static void init_ulp_program(void) {
+static void init_gpio(void) {
 
     /* GPIO used for pulse counting */
     uint8_t gpio_num = GPIO_NUM_32;
 
     ESP_LOGI(TAG_MAIN, "Init ulp program");
-
-    /* Define ulp variables */
-    ulp_prev_state = 0;
-    ulp_debounce_counter = 5;
-    ulp_debounce_max_count = 5;
-
-    esp_err_t err = ulp_load_binary(0, ulp_main_bin_start, (ulp_main_bin_end - ulp_main_bin_start) / sizeof(uint32_t));
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, ulp binary not load");
-        return;
-    }
 
     /* Warning: ESP32 pins 34, 35, 36 and 39 are input only pins and do not have internal pullup resistors */
     assert(rtc_gpio_is_valid_gpio(gpio_num) && "GPIO used for read GPIO must be an RTC IO");
@@ -180,12 +154,6 @@ static void init_ulp_program(void) {
     /* Suppress boot messages */
     esp_deep_sleep_disable_rom_logging();
 
-    /* Start the program */
-    err = ulp_run(&ulp_entry - RTC_SLOW_MEM);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, ulp program not started");
-    }
-
     /* Configure led */
     gpio_set_level(GPIO_NUM_22, 1);
     gpio_set_direction(GPIO_NUM_22, GPIO_MODE_OUTPUT);
@@ -232,12 +200,6 @@ static void door_sensor_task() {
     }
     gpio_set_level(GPIO_NUM_22, 0);
 
-    /* Enable ULP wakeup */
-    err = esp_sleep_enable_ulp_wakeup();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, wakeup from ulp not enable");
-    }
-
     /* Enable timer wakeup every 30 seconds */
     err = esp_sleep_enable_timer_wakeup(1 * 1000000);
     if (err != ESP_OK) {
@@ -278,7 +240,6 @@ __attribute__((constructor)) void pre_app_main() {
     ESP_LOGI(TAG_MAIN, "Start pre app main");
 
     /* Init ulp program */
-    init_ulp_program();
 
     return;
 }
