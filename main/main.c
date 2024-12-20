@@ -42,7 +42,7 @@ static bool read_reed_switch() {
     uint8_t gpio_old_state = 1;
     uint8_t counter = 0;
 
-    while (counter < 5) {
+    while (counter < 3) {
         gpio_new_state = rtc_gpio_get_level(GPIO_NUM_32);
         if (gpio_new_state != gpio_old_state) {
             counter = 0;
@@ -121,6 +121,12 @@ static void init_gpio(void) {
     /* Configure led */
     gpio_set_level(GPIO_NUM_22, 1);
     gpio_set_direction(GPIO_NUM_22, GPIO_MODE_OUTPUT);
+
+    /* Configure reed switch */
+    gpio_reset_pin(GPIO_NUM_32);
+    gpio_set_direction(GPIO_NUM_32, GPIO_MODE_INPUT);
+    gpio_pullup_en(GPIO_NUM_32);
+    gpio_pulldown_dis(GPIO_NUM_32);
 
     return;
 }
