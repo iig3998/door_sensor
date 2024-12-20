@@ -35,7 +35,7 @@
 
 static uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-/* Read reed switch status */
+/* Read reed switch status with debounce filter */
 static bool read_reed_switch() {
 
     uint8_t gpio_new_state = 1;
@@ -58,30 +58,6 @@ static bool read_reed_switch() {
     return false;
 }
 
-/* Configure reed switch */
-void configure_reed_switch(void) {
-
-    /* Reset the pin */
-    gpio_reset_pin(GPIO_NUM_32);
-
-    /* Set the GPIOs to input mode */
-    gpio_set_direction(GPIO_NUM_32, GPIO_MODE_INPUT);
-
-    /* Enable Pullup for Input Pin */
-    gpio_pullup_en(GPIO_NUM_32);
-
-    /* Disable pulldown for Input Pin */
-    gpio_pulldown_dis(GPIO_NUM_32);
-
-    /* Configure raising/falling Edge detection Interrupt for Input Pin */
-    //gpio_set_intr_type(GPIO_NUM_32, GPIO_INTR_ANYEDGE);
-
-    /* Install gpio isr service to default values */
-    //gpio_install_isr_service(0);
-
-    gpio_wakeup_enable(GPIO_NUM_32, GPIO_INTR_HIGH_LEVEL);
-}
-
 /* Init ulp program */
 static void init_gpio(void) {
 
@@ -89,18 +65,6 @@ static void init_gpio(void) {
     uint8_t gpio_num = GPIO_NUM_32;
 
     ESP_LOGI(TAG_MAIN, "Init ulp program");
-
-    /* Warning: ESP32 pins 34, 35, 36 and 39 are input only pins and do not have internal pullup resistors */
-    assert(rtc_gpio_is_valid_gpio(gpio_num) && "GPIO used for read GPIO must be an RTC IO");
-
-    ulp_gpio_number = rtc_io_number_get(gpio_num);
-    ESP_LOGI(TAG_MAIN, "RTC gpio number: %lu", ulp_gpio_number);
-
-    /* Initialize selected GPIO as RTC IO, enable input, enable pullup and disable pulldown */
-    rtc_gpio_init(gpio_num);
-    rtc_gpio_set_direction(gpio_num, RTC_GPIO_MODE_INPUT_ONLY);
-    rtc_gpio_pulldown_dis(gpio_num);
-    rtc_gpio_pullup_en(gpio_num);
 
     /* Isolate all gpio */
     gpio_reset_pin(GPIO_NUM_0);
