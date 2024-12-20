@@ -59,12 +59,9 @@ static bool read_reed_switch() {
 /* Init ulp program */
 static void init_gpio(void) {
 
-    /* GPIO used for pulse counting */
-    uint8_t gpio_num = GPIO_NUM_32;
-
     ESP_LOGI(TAG_MAIN, "Init ulp program");
 
-    /* Isolate all gpio */
+    /* Disable GPIO unused */
     gpio_reset_pin(GPIO_NUM_0);
     gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
 
@@ -140,15 +137,11 @@ static void door_sensor_task() {
 
     wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
-        case ESP_SLEEP_WAKEUP_ULP:
-            ESP_LOGI(TAG_MAIN, "Wakeup from ulp");
-            break;
         case ESP_SLEEP_WAKEUP_TIMER:
             ESP_LOGI(TAG_MAIN, "Wakeup from timer");
             break;
         case ESP_SLEEP_WAKEUP_GPIO:
             ESP_LOGI(TAG_MAIN, "Wakeup from gpio");
-            ESP_LOGI(TAG_MAIN, "State gpio 32: %u", read_reed_switch());
             break;
         default:
             ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
