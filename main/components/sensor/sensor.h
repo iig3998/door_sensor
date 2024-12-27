@@ -40,6 +40,6 @@ typedef struct {
 
 node_id_cmd build_command(uint8_t id, enum node_type st, enum cmd_type ct, int64_t time);
 
-node_id_alarm set_alarm_sensor(uint8_t id, bool state, int64_t time);
+node_id_alarm set_alarm_sensor(uint8_t id, bool state, bool battery_low_detect, int64_t time);
 
 #endif

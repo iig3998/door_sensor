@@ -6,7 +6,7 @@ idf_component_register(SRCS "main.c"
 					INCLUDE_DIRS "components/wifi"
 					# INCLUDE_DIRS "components/web_server"
 					PRIV_REQUIRES esp_http_server json
-                    REQUIRES driver soc nvs_flash ulp esp_timer esp_wifi esp_http_client)
+                    REQUIRES driver soc nvs_flash ulp esp_timer esp_wifi esp_http_client esp_adc)
 #
 # ULP support additions to component CMakeLists.txt.
 #

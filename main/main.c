@@ -10,7 +10,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-//#include "freertos/event_groups.h"
 
 #include "nvs_flash.h"
 
@@ -21,6 +20,12 @@
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "driver/uart.h"
+#include "driver/adc.h"
+
+//#include "esp_adc_cal.h"
+//#include "esp_adc/adc_cali.h"
+//#include "esp_adc/adc_oneshot.h"
+//#include "esp_adc/adc_continuous.h"
 
 #include "sensor.h"
 #include "wifi.h"
@@ -30,6 +35,7 @@
 #define ID_SENSOR             2
 #define NUMBER_ATTEMPTS       3
 #define RETRASMISSION_TIME_MS 150
+#define DEBOUNCE_COUNTER      3
 
 static uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -40,7 +46,7 @@ static bool read_reed_switch() {
     uint8_t gpio_old_state = 1;
     uint8_t counter = 0;
 
-    while (counter < 3) {
+    while (counter < DEBOUNCE_COUNTER) {
         gpio_new_state = gpio_get_level(GPIO_NUM_32);
         if (gpio_new_state != gpio_old_state) {
             counter = 0;
@@ -59,7 +65,7 @@ static bool read_reed_switch() {
 /* Init ulp program */
 static void init_gpio(void) {
 
-    ESP_LOGI(TAG_MAIN, "Init ulp program");
+    ESP_LOGI(TAG_MAIN, "Init gpio");
 
     /* Disable GPIO unused */
     gpio_reset_pin(GPIO_NUM_0);
@@ -70,9 +76,6 @@ static void init_gpio(void) {
 
     gpio_reset_pin(GPIO_NUM_4);
     gpio_set_direction(GPIO_NUM_4, GPIO_MODE_DISABLE);
-
-    gpio_reset_pin(GPIO_NUM_13);
-    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_DISABLE);
 
     gpio_reset_pin(GPIO_NUM_13);
     gpio_set_direction(GPIO_NUM_13, GPIO_MODE_DISABLE);
@@ -122,7 +125,7 @@ static void init_gpio(void) {
     gpio_set_direction(GPIO_NUM_32, GPIO_MODE_INPUT);
     gpio_pullup_en(GPIO_NUM_32);
     gpio_pulldown_dis(GPIO_NUM_32);
-
+    
     return;
 }
 
@@ -148,9 +151,23 @@ static void door_sensor_task() {
         break;
     }
 
+    /* Configure ADC and read value */
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_12);
+
+    int adc_data = adc1_get_raw(ADC1_CHANNEL_0);
+    float voltage = (adc_data / 4095.0) * 3.3;
+    bool battery_low_detect = false;
+
+    if (voltage < 3.15) {
+        battery_low_detect = true;
+    }
+
+    ESP_LOGI(TAG_MAIN, "ADC data: %d, Voltage: %.2fV", adc_data, voltage);
+
     /* Send packet */
     memset(&pkt, 0, sizeof(pkt));
-    pkt = set_alarm_sensor(ID_SENSOR, read_reed_switch(), esp_timer_get_time());
+    pkt = set_alarm_sensor(ID_SENSOR, read_reed_switch(), battery_low_detect, esp_timer_get_time());
 
     for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
         err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
@@ -164,6 +181,7 @@ static void door_sensor_task() {
     ESP_LOGI(TAG_MAIN, "Start deep sleep mode");
     ESP_LOGI(TAG_MAIN, "Start time: %lld", esp_timer_get_time());
 
+    /* Waits 10 seconds */
     vTaskDelay(pdMS_TO_TICKS(10));
 
     /* Start deep sleep mode */
@@ -196,24 +214,8 @@ __attribute__((constructor)) void pre_app_main() {
 
     ESP_LOGI(TAG_MAIN, "Start pre app main");
 
-    /* Init ulp program */
+    /* Init gpio */
     init_gpio();
-
-    /* Enable timer wakeup every 30 seconds */
-    err = esp_sleep_enable_timer_wakeup(100 * 1000000);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, wakeup from GPIO not enable");
-        return;
-    }
-
-    /* Set wakeup gpio */
-    err = gpio_wakeup_enable(GPIO_NUM_32, GPIO_INTR_HIGH_LEVEL);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
-        return;
-    }
-
-    esp_sleep_enable_gpio_wakeup();
 
     return;
 }
@@ -244,6 +246,22 @@ void app_main() {
             return;
         }
     }
+
+    /* Enable timer wakeup every 30 seconds */
+    err = esp_sleep_enable_timer_wakeup(30 * 1000000);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
+        return;
+    }
+
+    /* Set wakeup gpio */
+    err = gpio_wakeup_enable(GPIO_NUM_32, GPIO_INTR_HIGH_LEVEL);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from gpio not enable");
+        return;
+    }
+
+    esp_sleep_enable_gpio_wakeup();
 
     /* Init WiFi espnow */
     err = wifi_init_sta();
