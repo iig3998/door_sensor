@@ -43,7 +43,7 @@ node_id_cmd build_command(uint8_t id, enum node_type st, enum cmd_type ct, int64
 }
 
 /* Alarm sensor packet response */
-node_id_alarm set_alarm_sensor(uint8_t id, bool state, int64_t time) {
+node_id_alarm set_alarm_sensor(uint8_t id, bool state, bool battery_low_detect, int64_t time) {
 
     node_id_alarm pkt;
 
@@ -53,16 +53,18 @@ node_id_alarm set_alarm_sensor(uint8_t id, bool state, int64_t time) {
 	pkt.node = ALARM_SENSOR;
 
     pkt.state = state;
-    pkt.battery_low_detect = false;
-
+    pkt.battery_low_detect = battery_low_detect;
+    memset(pkt.code, '\0', sizeof(pkt.code));
 	pkt.time = time;
 	pkt.crc = calc_crc16((uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.crc));
 
     ESP_LOGI(TAG_SENSOR, "ID: %u", pkt.id);
     ESP_LOGI(TAG_SENSOR, "Node type: %u", pkt.node);
-    ESP_LOGI(TAG_SENSOR, "Alarm sensor state: %u", pkt.state);
+    ESP_LOGI(TAG_SENSOR, "Sensor state: %u", pkt.state);
+    ESP_LOGI(TAG_SENSOR, "Battery low detect: %u", pkt.battery_low_detect);
+    ESP_LOGI(TAG_SENSOR, "Code: %s", pkt.code);
     ESP_LOGI(TAG_SENSOR, "Time: %lld", pkt.time);
-    ESP_LOGI(TAG_SENSOR, "Alarm sensor state: %u", pkt.crc);
+    ESP_LOGI(TAG_SENSOR, "CRC16: %u", pkt.crc);
 
     return pkt;
 }
