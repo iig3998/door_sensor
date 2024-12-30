@@ -71,11 +71,14 @@ esp_err_t wifi_init_sta() {
     }
 
     /* Set wifi protocol */
-    err = esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR);
+    err = esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR|WIFI_PROTOCOL_11A|WIFI_PROTOCOL_11AC|WIFI_PROTOCOL_11AX);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi protocol not set");
         return ESP_FAIL;
     }
+
+    //err = esp_wifi_set_bandwidth();
+    //esp_err_t esp_wifi_sta_get_rssi(int *rssi);
 
     return ESP_OK;
 }
