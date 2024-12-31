@@ -13,10 +13,11 @@
 
 #define GPIO_WAKEUP_PIN  GPIO_NUM_25
 #define DEBOUNCE_COUNTER 50
-#define TAG_GPIO         "GPIO"
+#define TAG_MAIN         "DoorSensor"
 
-RTC_DATA_ATTR uint8_t new_state = 0;
-RTC_DATA_ATTR uint8_t old_state = 0;
+#define NUMBER_ATTEMPTS       3
+#define ID_SENSOR             2
+#define RETRASMISSION_TIME_MS 50
 
 /* sotto i 2.6 volt della batteria allarme */
 void app_main() {
