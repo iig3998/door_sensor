@@ -67,6 +67,18 @@ void app_main() {
         break;
     }
 
+    /* Send packet */
+    memset(&pkt, 0, sizeof(pkt));
+    pkt = set_alarm_sensor(ID_SENSOR, new_state, esp_timer_get_time());
+
+    for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
+        err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_MAIN, "Error, data not sent");
+        }
+        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
+    }
+    gpio_set_level(GPIO_NUM_22, 0);
     if ((counter == 0) && (new_state == 0)) {
         ESP_LOGI(TAG_GPIO, "Open");
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 1));
