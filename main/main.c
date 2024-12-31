@@ -5,6 +5,7 @@
 #include "esp_timer.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
+#include "driver/adc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -18,14 +19,15 @@
 #define NUMBER_ATTEMPTS       3
 #define ID_SENSOR             2
 #define RETRASMISSION_TIME_MS 50
+#define VREF_STATE_BATTERY    3.15
 
 uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
-RTC_DATA_ATTR bool battery_state = 0;
+RTC_DATA_ATTR bool battery_state = false;
 
-/* sotto i 2.6 volt della batteria allarme */
+/* Main program */
 void app_main() {
 
     esp_err_t err = ESP_FAIL;
@@ -36,6 +38,19 @@ void app_main() {
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_TIMER:
             ESP_LOGI(TAG_MAIN, "Wakeup from timer");
+
+            /* Configure ADC and read value */
+            adc1_config_width(ADC_WIDTH_BIT_12);
+            adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_12);
+
+            int adc_data = adc1_get_raw(ADC1_CHANNEL_0);
+            float voltage = (adc_data / 4095.0) * 3.3;
+
+            if (voltage <= VREF_STATE_BATTERY) {
+                battery_state = true;
+            }
+
+            ESP_LOGI(TAG_MAIN, "ADC data: %d, Voltage: %.2fV", adc_data, voltage);
             break;
         case ESP_SLEEP_WAKEUP_GPIO:
             ESP_LOGI(TAG_MAIN, "Wakeup from GPIO 25");
@@ -60,12 +75,12 @@ void app_main() {
             break;
         default:
             ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
-        break;
+            break;
     }
 
     /* Send packet */
     memset(&pkt, 0, sizeof(pkt));
-    pkt = set_alarm_sensor(ID_SENSOR, new_state, esp_timer_get_time());
+    pkt = set_alarm_sensor(ID_SENSOR, new_state, battery_state, esp_timer_get_time());
 
     for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
         err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
