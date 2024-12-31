@@ -27,6 +27,17 @@ RTC_DATA_ATTR bool old_state = 0;
 /* sotto i 2.6 volt della batteria allarme */
 void app_main() {
 
+    esp_err_t err = ESP_FAIL;
+    static uint8_t counter = 0;
+    static node_id_alarm pkt;
+
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    switch (wakeup_reason) {
+        case ESP_SLEEP_WAKEUP_TIMER:
+            ESP_LOGI(TAG_MAIN, "Wakeup from timer");
+            break;
+        case ESP_SLEEP_WAKEUP_GPIO:
+            ESP_LOGI(TAG_MAIN, "Wakeup from GPIO 25");
     static uint8_t counter = DEBOUNCE_COUNTER;
     ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
     ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
@@ -49,6 +60,11 @@ void app_main() {
 
                 old_state = new_state;
             }
+
+            break;
+        default:
+            ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
+        break;
     }
 
     if ((counter == 0) && (new_state == 0)) {
