@@ -87,7 +87,7 @@ void app_main() {
         if (err != ESP_OK) {
             ESP_LOGE(TAG_MAIN, "Error, data not sent");
         }
-        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
+        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS * ID_SENSOR));
     }
     gpio_set_level(GPIO_NUM_22, 0);
 
