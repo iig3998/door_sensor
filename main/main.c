@@ -21,6 +21,9 @@
 
 uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+RTC_DATA_ATTR bool new_state = 0;
+RTC_DATA_ATTR bool old_state = 0;
+
 /* sotto i 2.6 volt della batteria allarme */
 void app_main() {
 
