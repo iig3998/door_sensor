@@ -38,11 +38,6 @@ void app_main() {
             break;
         case ESP_SLEEP_WAKEUP_GPIO:
             ESP_LOGI(TAG_MAIN, "Wakeup from GPIO 25");
-    static uint8_t counter = DEBOUNCE_COUNTER;
-    ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
-    ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
-    ESP_ERROR_CHECK(rtc_gpio_pulldown_dis(GPIO_WAKEUP_PIN));
-    ESP_ERROR_CHECK(rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY));
 
             ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
             ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
