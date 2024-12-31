@@ -79,6 +79,8 @@ void app_main() {
         vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
     }
     gpio_set_level(GPIO_NUM_22, 0);
+
+    /* Enable wakeup from GPIO 25 */
     if ((counter == 0) && (new_state == 0)) {
         ESP_LOGI(TAG_MAIN, "Open");
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 1));
@@ -87,11 +89,18 @@ void app_main() {
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 0));
     }
 
-    ESP_LOGI("DeepSleep", "Going to deep sleep. Wakeup by GPIO pin %d", GPIO_WAKEUP_PIN);
+    /* Enable timer wakeup every 5 seconds */
+    err = esp_sleep_enable_timer_wakeup(5 * 1000000);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
+    }
+
+    ESP_LOGI(TAG_MAIN, "Going to deep sleep mode");
 
     vTaskDelay(5/portTICK_PERIOD_MS);
 
     /* Entra in deep sleep */
     esp_deep_sleep_start();
 
+    return;
 }
