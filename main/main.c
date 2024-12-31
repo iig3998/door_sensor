@@ -80,10 +80,10 @@ void app_main() {
     }
     gpio_set_level(GPIO_NUM_22, 0);
     if ((counter == 0) && (new_state == 0)) {
-        ESP_LOGI(TAG_GPIO, "Open");
+        ESP_LOGI(TAG_MAIN, "Open");
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 1));
     } else if ((counter == 0) && (new_state == 1)) {
-        ESP_LOGI(TAG_GPIO, "Close");
+        ESP_LOGI(TAG_MAIN, "Close");
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 0));
     }
 
