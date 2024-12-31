@@ -1,9 +1,15 @@
+#include <string.h>
 #include "esp_sleep.h"
 #include "esp_log.h"
+#include "esp_now.h"
+#include "esp_timer.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "wifi.h"
+#include "sensor.h"
 
 #define GPIO_WAKEUP_PIN  GPIO_NUM_25
 #define DEBOUNCE_COUNTER 50
