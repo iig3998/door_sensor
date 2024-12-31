@@ -19,6 +19,8 @@
 #define ID_SENSOR             2
 #define RETRASMISSION_TIME_MS 50
 
+uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 /* sotto i 2.6 volt della batteria allarme */
 void app_main() {
 
