@@ -13,6 +13,7 @@
 #include "sensor.h"
 
 #define GPIO_WAKEUP_PIN  GPIO_NUM_25
+#define GPIO_LED         GPIO_NUM_22
 #define DEBOUNCE_COUNTER 50
 #define TAG_MAIN         "DoorSensor"
 
@@ -20,6 +21,8 @@
 #define ID_SENSOR             2
 #define RETRASMISSION_TIME_MS 50
 #define VREF_STATE_BATTERY    3.15
+
+
 
 uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -33,6 +36,10 @@ void app_main() {
     esp_err_t err = ESP_FAIL;
     static uint8_t counter = 0;
     static node_id_alarm pkt;
+
+    ESP_ERROR_CHECK(gpio_pullup_en(GPIO_NUM_22));
+    ESP_ERROR_CHECK(gpio_pulldown_dis(GPIO_NUM_22));
+    ESP_ERROR_CHECK(gpio_set_direction(GPIO_NUM_22, RTC_GPIO_MODE_OUTPUT_ONLY));
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
@@ -82,6 +89,7 @@ void app_main() {
     memset(&pkt, 0, sizeof(pkt));
     pkt = set_alarm_sensor(ID_SENSOR, new_state, battery_state, esp_timer_get_time());
 
+    gpio_set_level(GPIO_NUM_22, 1);
     for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
         err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
         if (err != ESP_OK) {
