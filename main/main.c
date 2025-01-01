@@ -19,6 +19,7 @@
 
 #define NUMBER_ATTEMPTS       3
 #define ID_SENSOR             2
+#define ESPNOW_WIFI_CHANNEL   7
 #define RETRASMISSION_TIME_MS 50
 #define VREF_STATE_BATTERY    3.15
 
