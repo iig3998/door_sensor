@@ -11,6 +11,7 @@
 
 #include "nvs_flash.h"
 #include "esp_wifi.h"
+
 #include "wifi.h"
 #include "sensor.h"
 
@@ -24,8 +25,6 @@
 #define ESPNOW_WIFI_CHANNEL   7
 #define RETRASMISSION_TIME_MS 50
 #define VREF_STATE_BATTERY    3.15
-
-
 
 uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -138,6 +137,7 @@ void app_main() {
     pkt = set_alarm_sensor(ID_SENSOR, new_state, battery_state, esp_timer_get_time());
 
     gpio_set_level(GPIO_NUM_22, 1);
+
     for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
         err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
         if (err != ESP_OK) {
@@ -145,14 +145,15 @@ void app_main() {
         }
         vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS * ID_SENSOR));
     }
+
     gpio_set_level(GPIO_NUM_22, 0);
 
     /* Enable wakeup from GPIO 25 */
     if ((counter == 0) && (new_state == 0)) {
-        ESP_LOGI(TAG_MAIN, "Open");
+        ESP_LOGI(TAG_MAIN, "Door open");
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 1));
     } else if ((counter == 0) && (new_state == 1)) {
-        ESP_LOGI(TAG_MAIN, "Close");
+        ESP_LOGI(TAG_MAIN, "Door close");
         ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_WAKEUP_PIN, 0));
     }
 
