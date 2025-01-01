@@ -139,7 +139,7 @@ void app_main() {
     gpio_set_level(GPIO_NUM_22, 1);
 
     for(uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
-        err = esp_now_send(dest_mac, (uint8_t *)&pkt, sizeof(pkt));
+        err = esp_now_send(peer.peer_addr, (uint8_t *)&pkt, sizeof(pkt));
         if (err != ESP_OK) {
             ESP_LOGE(TAG_MAIN, "Error, data not sent");
         }
