@@ -9,6 +9,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "nvs_flash.h"
+#include "esp_wifi.h"
 #include "wifi.h"
 #include "sensor.h"
 
@@ -99,6 +101,13 @@ void app_main() {
             break;
     }
 
+    /* Init NVS flash */
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK( nvs_flash_erase() );
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
     /* Send packet */
     memset(&pkt, 0, sizeof(pkt));
     pkt = set_alarm_sensor(ID_SENSOR, new_state, battery_state, esp_timer_get_time());
