@@ -51,10 +51,66 @@ void gpio_debounce_filter(gpio_num_t gpio) {
     return;
 }
 
+void init_gpio() {
+
+    /* Isolate all gpio */
+    gpio_reset_pin(GPIO_NUM_0);
+    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_2);
+    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_4);
+    gpio_set_direction(GPIO_NUM_4, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_13);
+    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_13);
+    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_26);
+    gpio_set_direction(GPIO_NUM_26, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_27);
+    gpio_set_direction(GPIO_NUM_27, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_32);
+    gpio_set_direction(GPIO_NUM_32, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_33);
+    gpio_set_direction(GPIO_NUM_33, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_34);
+    gpio_set_direction(GPIO_NUM_34, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_35);
+    gpio_set_direction(GPIO_NUM_35, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_36);
+    gpio_set_direction(GPIO_NUM_36, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_37);
+    gpio_set_direction(GPIO_NUM_37, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_38);
+    gpio_set_direction(GPIO_NUM_38, GPIO_MODE_DISABLE);
+
+    gpio_reset_pin(GPIO_NUM_39);
+    gpio_set_direction(GPIO_NUM_39, GPIO_MODE_DISABLE);
+
+    //rtc_gpio_isolate(GPIO_NUM_12);
+    //rtc_gpio_isolate(GPIO_NUM_15);
+
+    return;
+
+}
+
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
-
+    /* Suppress boot messages */
+    esp_deep_sleep_disable_rom_logging();
 
     return;
 }
