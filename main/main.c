@@ -51,6 +51,14 @@ void gpio_debounce_filter(gpio_num_t gpio) {
     return;
 }
 
+/* Pre app main program */
+__attribute__((constructor)) void pre_app_main() {
+
+
+
+    return;
+}
+
 /* Main program */
 void app_main() {
 
