@@ -57,9 +57,11 @@ void app_main() {
     static uint8_t counter = 0;
     static node_id_alarm pkt;
 
+    /* Configure led on board */
+    gpio_set_level(GPIO_NUM_22, 1);
     ESP_ERROR_CHECK(gpio_pullup_en(GPIO_NUM_22));
     ESP_ERROR_CHECK(gpio_pulldown_dis(GPIO_NUM_22));
-    ESP_ERROR_CHECK(gpio_set_direction(GPIO_NUM_22, RTC_GPIO_MODE_OUTPUT_ONLY));
+    ESP_ERROR_CHECK(gpio_set_direction(GPIO_NUM_22, GPIO_MODE_OUTPUT));
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
