@@ -30,6 +30,25 @@ RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
 RTC_DATA_ATTR bool battery_state = false;
 
+
+/* GPIO debounce filter */
+void gpio_debounce_filter(gpio_num_t gpio) {
+
+    uint8_t counter = DEBOUNCE_COUNTER;
+
+    while(counter > 0) {
+        new_state = rtc_gpio_get_level(gpio);
+        if (new_state != old_state)
+            counter = DEBOUNCE_COUNTER;
+        else
+            counter --;
+
+        old_state = new_state;
+    }
+
+    return;
+}
+
 /* Main program */
 void app_main() {
 
