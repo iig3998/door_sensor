@@ -57,6 +57,12 @@ void app_main() {
     static uint8_t counter = 0;
     static node_id_alarm pkt;
 
+    /* Configure gpio reed switch */
+    ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_pulldown_dis(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY));
+
     /* Configure led on board */
     gpio_set_level(GPIO_NUM_22, 1);
     ESP_ERROR_CHECK(gpio_pullup_en(GPIO_NUM_22));
