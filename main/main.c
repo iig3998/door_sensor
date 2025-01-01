@@ -90,26 +90,12 @@ void app_main() {
         case ESP_SLEEP_WAKEUP_GPIO:
             ESP_LOGI(TAG_MAIN, "Wakeup from GPIO 25");
 
-            ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
-            ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
-            ESP_ERROR_CHECK(rtc_gpio_pulldown_dis(GPIO_WAKEUP_PIN));
-            ESP_ERROR_CHECK(rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY));
-
-            /* Debounce filter */
-            counter = DEBOUNCE_COUNTER;
-            while(counter > 0) {
-                new_state = rtc_gpio_get_level(GPIO_WAKEUP_PIN);
-                if (new_state != old_state)
-                    counter = DEBOUNCE_COUNTER;
-                else
-                    counter --;
-
-                old_state = new_state;
-            }
-
+            gpio_debounce_filter(GPIO_WAKEUP_PIN);
             break;
         default:
             ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
+
+            gpio_debounce_filter(GPIO_WAKEUP_PIN);
             break;
     }
 
