@@ -58,6 +58,7 @@ void app_main() {
     esp_err_t err = ESP_FAIL;
     static uint8_t counter = 0;
     static node_id_alarm pkt;
+    static esp_now_peer_info_t peer;
 
     /* Configure gpio reed switch */
     ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
@@ -108,6 +109,30 @@ void app_main() {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    /* Init WiFi station */
+    wifi_init_sta();
+
+    /* Init espnow */
+    err = esp_now_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, ESPNOW not init");
+        return;
+    }
+
+    /* Add peer to list */
+    memset(&peer, 0, sizeof(esp_now_peer_info_t));
+    peer.channel = ESPNOW_WIFI_CHANNEL;
+    peer.ifidx = WIFI_IF_STA;
+    peer.encrypt = false;
+
+    memcpy(peer.peer_addr, dest_mac, ESP_NOW_ETH_ALEN);
+    err = esp_now_add_peer(&peer);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, peer not add");
+        return;
+    }
+
     /* Send packet */
     memset(&pkt, 0, sizeof(pkt));
     pkt = set_alarm_sensor(ID_SENSOR, new_state, battery_state, esp_timer_get_time());
