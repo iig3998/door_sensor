@@ -3,9 +3,9 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 
-#include "sensor.h"
+#include "sensors.h"
 
-#define TAG_SENSOR "SENSOR"
+#define TAG_SENSOR "SENSORS"
 
 /* Print node caratteristics */
 static void print_node(node_id_alarm pkt) {
