@@ -16,7 +16,8 @@ enum cmd_type {
 	DEL,
 	UPDATE,
 	ACTIVE,
-	DEACTIVE
+	DEACTIVE,
+	RESPONSE
 };
 
 /* Strcu header message */
@@ -35,6 +36,9 @@ typedef struct {
 	int64_t time;
 	uint16_t crc;
 } __attribute__((__packed__)) node_id_alarm;
+
+/* Struct alarm siren */
+typedef node_id_alarm node_id_siren;
 
 /* Struct gateway message */
 typedef struct {
