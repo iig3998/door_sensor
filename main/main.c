@@ -13,12 +13,12 @@
 #include "esp_wifi.h"
 
 #include "wifi.h"
-#include "sensor.h"
+#include "sensors.h"
 
-#define GPIO_WAKEUP_PIN  GPIO_NUM_25
-#define LED_ONBORAD      GPIO_NUM_22
-#define DEBOUNCE_COUNTER 50
-#define TAG_MAIN         "DOOR_SENSOR"
+#define GPIO_WAKEUP_PIN       GPIO_NUM_25
+#define LED_ONBORAD           GPIO_NUM_22
+#define DEBOUNCE_COUNTER      50
+#define TAG_MAIN              "DOOR_SENSOR"
 
 #define NUMBER_ATTEMPTS       1
 #define ID_SENSOR             2
@@ -27,8 +27,8 @@
 #define VREF_STATE_BATTERY    3.15
 #define DATA_SENT             (1 << 0)
 #define DATA_RECEIVED         (1 << 1)
-#define TIMEOUT               300 // milliseconds
-#define WAKEUP_TIME           5   // seconsa
+#define TIMEOUT               300  // milliseconds
+#define WAKEUP_TIME           10   // seconds
 
 EventGroupHandle_t xEventGroupDoorSensor;
 
@@ -38,7 +38,7 @@ RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
 RTC_DATA_ATTR bool battery_state = false;
 
-/**/
+/* Receive callback function */
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
 
     ESP_LOGI(TAG_MAIN, "Receive callback function");
@@ -62,7 +62,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
     return;
 }
 
-/**/
+/* Send callback function */
 static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
     ESP_LOGI(TAG_MAIN, "Send callback function");
@@ -210,7 +210,7 @@ static void set_wakeup_source() {
 void app_main() {
 
     esp_err_t err = ESP_FAIL;
-    static uint8_t counter = 0;
+    //static uint8_t counter = 0;
     static node_id_alarm pkt;
     static esp_now_peer_info_t peer;
 

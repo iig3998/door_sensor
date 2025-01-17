@@ -1,5 +1,5 @@
-#ifndef SENSOR_H
-#define SENSOR_H
+#ifndef SENSORS_H
+#define SENSORS_H
 
 #include <stdint.h>
 #include <stdbool.h>
