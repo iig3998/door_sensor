@@ -9,7 +9,8 @@
         "inttypes.h": "c",
         "uart.h": "c",
         "esp_system.h": "c",
-        "freertos.h": "c"
+        "freertos.h": "c",
+        "sensor.h": "c"
     },
     "idf.espIdfPath": "/home/fabio/esp/esp-idf",
     "idf.toolsPath": "/home/fabio/.espressif"
