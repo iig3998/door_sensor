@@ -1,19 +1,26 @@
 #include <string.h>
+
 #include "esp_sleep.h"
 #include "esp_log.h"
 #include "esp_now.h"
 #include "esp_timer.h"
+#include "esp_random.h"
+#include "esp_mac.h"
+
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "driver/adc.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "nvs_flash.h"
 #include "esp_wifi.h"
 
+#include "common.h"
+#include "header.h"
 #include "wifi.h"
-#include "sensors.h"
+#include "sensor.h"
 
 #define GPIO_WAKEUP_PIN       GPIO_NUM_25
 #define LED_ONBORAD           GPIO_NUM_22
@@ -32,7 +39,8 @@
 
 EventGroupHandle_t xEventGroupDoorSensor;
 
-uint8_t dest_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t dest_mac[6] = {0, 0, 0, 0, 0, 0};
+uint8_t src_mac[6] = {0, 0, 0, 0, 0, 0};
 
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
@@ -43,7 +51,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
     ESP_LOGI(TAG_MAIN, "Receive callback function");
 
-    node_id_response resp;
+    node_sensor_msg resp;
     ESP_LOGI(TAG_MAIN, "Receive message from %X:%X:%X:%X:%X:%X", recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2], recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
 
     if (!recv_info->src_addr || !data || len <= 0) {
@@ -51,10 +59,18 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
         return;
     }
 
-    memcpy(&resp, (node_id_response *)data, sizeof(node_id_response));
-    if(!resp.ack) {
-        ESP_LOGE(TAG_MAIN, "Error, message not received correctly form gateway");
-        return;
+    memcpy(&resp, (node_sensor_msg *)data, sizeof(node_sensor_msg));
+    switch(resp.header.cmd) {
+        case NACK:
+            ESP_LOGE(TAG_MAIN, "Error, message not received correctly form gateway");
+            return;
+        break;
+        case ACK:
+            ESP_LOGI(TAG_MAIN, "Message received correctly form gateway");
+        break;
+        default:
+            ESP_LOGW(TAG_MAIN, "Warning, command not valid");
+        break;
     }
 
     xEventGroupClearBits(xEventGroupDoorSensor, DATA_RECEIVED);
@@ -66,6 +82,11 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
     ESP_LOGI(TAG_MAIN, "Send callback function");
+
+    if(!mac_addr) {
+        ESP_LOGE(TAG_MAIN, "Error, mac address is empty");
+        return;
+    }
 
     if(status == ESP_NOW_SEND_SUCCESS) {
         ESP_LOGI(TAG_MAIN, "Data sent correctly");
@@ -156,12 +177,21 @@ void init_gpio() {
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
+    esp_err_t err = ESP_FAIL;
+
     /* Suppress boot messages */
     esp_deep_sleep_disable_rom_logging();
 
     xEventGroupDoorSensor = xEventGroupCreate();
     if (!xEventGroupDoorSensor) {
         ESP_LOGE(TAG_MAIN, "Error, event group not created");
+        return;
+    }
+
+    /* Read mac address */
+    err = esp_read_mac(src_mac, ESP_MAC_WIFI_STA);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, mac address not read");
         return;
     }
 
@@ -210,11 +240,12 @@ static void set_wakeup_source() {
 void app_main() {
 
     esp_err_t err = ESP_FAIL;
+    int64_t start = 0;
     //static uint8_t counter = 0;
-    static node_id_alarm pkt;
-    static esp_now_peer_info_t peer;
+    node_sensor_msg msg;
+    esp_now_peer_info_t peer;
 
-    memset(&pkt, 0, sizeof(pkt));
+    memset(&msg, 0, sizeof(msg));
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
@@ -234,20 +265,21 @@ void app_main() {
 
             ESP_LOGI(TAG_MAIN, "ADC data: %d, Voltage: %.2fV", adc_data, voltage);
 
-            pkt = alarm_sensor_update_pkt(CONFIG_ID_SENSOR, new_state, battery_state, esp_timer_get_time());
+            msg = build_request_update_sensor_msg(ID_SENSOR, (esp_random() % 256), src_mac, new_state, battery_state);
+
             break;
         case ESP_SLEEP_WAKEUP_EXT0:
             ESP_LOGI(TAG_MAIN, "Wakeup from GPIO 25");
 
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
 
-            pkt = alarm_sensor_update_pkt(CONFIG_ID_SENSOR, new_state, battery_state, esp_timer_get_time());
+            msg = build_request_update_sensor_msg(ID_SENSOR, (esp_random() % 256), src_mac, new_state, battery_state);
 
             break;
         default:
             ESP_LOGW(TAG_MAIN, "Warning, wakeup unkown. It could be the first startup");
 
-            pkt = alarm_sensor_add_pkt(CONFIG_ID_SENSOR, esp_timer_get_time());
+            msg = build_request_add_sensor_msg(ID_SENSOR, (esp_random() % 256), src_mac, new_state, battery_state);
 
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
             break;
@@ -264,6 +296,7 @@ void app_main() {
     /* Init WiFi station */
     err = wifi_init_sta();
     if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, WiFi not configurated");
         return;
     }
 
@@ -302,7 +335,7 @@ void app_main() {
     xEventGroupSetBits(xEventGroupDoorSensor, DATA_SENT);
     gpio_set_level(LED_ONBORAD, 1);
 
-    err = esp_now_send(peer.peer_addr, (uint8_t *)&pkt, sizeof(pkt));
+    err = esp_now_send(peer.peer_addr, (uint8_t *)&msg, sizeof(msg));
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, data not sent");
     }
@@ -311,7 +344,7 @@ void app_main() {
     /* Wait until the data is sent */
     xEventGroupWaitBits(xEventGroupDoorSensor, DATA_SENT, pdTRUE, pdFALSE, 1000000000);
 
-    int64_t start = esp_timer_get_time();
+    start = esp_timer_get_time();
     while (esp_timer_get_time() - start < TIMEOUT * 1000) {
         if (!(xEventGroupGetBits(xEventGroupDoorSensor) & DATA_RECEIVED)) {
             ESP_LOGI(TAG_MAIN, "Data received from gateway");
