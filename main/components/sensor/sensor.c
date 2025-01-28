@@ -11,7 +11,7 @@
 static uint8_t counter_node_sensors = 0;
 
 /* Return tail sensors list */
-static struct node_sensors_list *get_tail_sensors_list(struct node_sensors_list *p) {
+static struct node_sensors_list_t *get_tail_sensors_list(struct node_sensors_list_t *p) {
 
     if(!p)
         return p;
@@ -24,7 +24,7 @@ static struct node_sensors_list *get_tail_sensors_list(struct node_sensors_list 
 }
 
 /* Return head sensors list */
-static struct node_sensors_list *get_head_sensors_list(struct node_sensors_list *p) {
+static struct node_sensors_list_t *get_head_sensors_list(struct node_sensors_list_t *p) {
 
     if(!p)
         return p;
@@ -37,7 +37,7 @@ static struct node_sensors_list *get_head_sensors_list(struct node_sensors_list 
 }
 
 /* Return sensor from list */
-struct node_sensors_list *get_sensors_from_list(struct node_sensors_list *p, uint8_t id) {
+struct node_sensors_list_t *get_sensors_from_list(struct node_sensors_list_t *p, uint8_t id) {
 
     p = get_head_sensors_list(p);
     if (!p)
@@ -60,11 +60,11 @@ struct node_sensors_list *get_sensors_from_list(struct node_sensors_list *p, uin
 }
 
 /* Add sensor to list */
-struct node_sensors_list *add_sensors_to_list(struct node_sensors_list *p, node_sensor_msg pn) {
+struct node_sensors_list_t *add_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn) {
 
     p = get_tail_sensors_list(p);
 
-    struct node_sensors_list *px = (struct node_sensors_list *)calloc(1, sizeof(struct node_sensors_list));
+    struct node_sensors_list_t *px = (struct node_sensors_list_t *)calloc(1, sizeof(struct node_sensors_list_t));
     if(!px)
         return NULL;
 
@@ -90,11 +90,11 @@ struct node_sensors_list *add_sensors_to_list(struct node_sensors_list *p, node_
 }
 
 /* Delete sensor from list */
-struct node_sensors_list *del_sensors_from_list(struct node_sensors_list *p, uint8_t id) {
+struct node_sensors_list_t *del_sensors_from_list(struct node_sensors_list_t *p, uint8_t id) {
 
-    struct node_sensors_list *p1 = NULL;
-    struct node_sensors_list *p2 = NULL;
-    struct node_sensors_list *p0 = NULL;
+    struct node_sensors_list_t *p1 = NULL;
+    struct node_sensors_list_t *p2 = NULL;
+    struct node_sensors_list_t *p0 = NULL;
 
     p0 = get_sensors_from_list(p, id);
     if(!p0) {
@@ -131,7 +131,7 @@ struct node_sensors_list *del_sensors_from_list(struct node_sensors_list *p, uin
 }
 
 /* Update node sensor */
-struct node_sensors_list *update_sensors_to_list(struct node_sensors_list *p, node_sensor_msg pn) {
+struct node_sensors_list_t *update_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn) {
 
     p = get_sensors_from_list(p, pn.header.id_node);
     if (!p)
@@ -149,7 +149,7 @@ uint8_t get_num_sensors_from_list() {
 }
 
 /* Print node id list */
-void print_sensors_list(struct node_sensors_list *p) {
+void print_sensors_list(struct node_sensors_list_t *p) {
 
     ESP_LOGI(TAG_SENSOR, "|-----------------------------------------------------|");
     ESP_LOGI(TAG_SENSOR, "|   ID   |   State reed switch   |   Status battery   |");
@@ -170,9 +170,9 @@ void print_sensors_list(struct node_sensors_list *p) {
     return;
 }
 
-node_sensor_msg build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], bool state, bool battery_low_detect) {
+node_sensor_msg_t build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], bool state, bool battery_low_detect) {
 
-    node_sensor_msg msg;
+    node_sensor_msg_t msg;
 
     msg.header.cmd = ADD;
     msg.header.id_msg = id_node;
@@ -189,9 +189,9 @@ node_sensor_msg build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, ui
     return msg;
 }
 
-node_sensor_msg build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], bool state, bool battery_low_detect) {
+node_sensor_msg_t build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], bool state, bool battery_low_detect) {
 
-    node_sensor_msg msg;
+    node_sensor_msg_t msg;
 
     msg.header.cmd = UPDATE;
     msg.header.id_msg = id_node;
@@ -209,9 +209,9 @@ node_sensor_msg build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg,
 }
 
 /* Build response ack sensor message */
-node_sensor_msg build_response_ack_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[]) {
+node_sensor_msg_t build_response_ack_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[]) {
 
-    node_sensor_msg resp;
+    node_sensor_msg_t resp;
     memset(&resp, 0, sizeof(resp));
 
     resp.header = build_header_msg(RESPONSE, SENSOR, id_node, id_msg, mac, ACK);
@@ -221,9 +221,9 @@ node_sensor_msg build_response_ack_sensor_msg(uint8_t id_node, uint8_t id_msg, u
 }
 
 /* Build response nack sensor message */
-node_sensor_msg build_response_nack_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[]) {
+node_sensor_msg_t build_response_nack_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[]) {
 
-    node_sensor_msg resp;
+    node_sensor_msg_t resp;
     memset(&resp, 0, sizeof(resp));
 
     resp.header = build_header_msg(RESPONSE, SENSOR, id_node, id_msg, mac, NACK);
