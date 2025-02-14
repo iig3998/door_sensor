@@ -236,6 +236,30 @@ static void set_wakeup_source() {
     return;
 }
 
+/* Start configuration device */
+inline static void start_configuration() {
+
+    if(usb_serial_jtag_is_connected() && !is_device_configured()) {
+
+        httpd_handle_t server;
+
+        ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
+
+        wifi_init_sta_ws();
+
+        server = start_webserver();
+
+        while(!is_device_configured()) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+
+        ESP_LOGI(TAG_MAIN, "Exit from configuration mode");
+        stop_webserver(server);
+    }
+
+    return;
+}
+
 /* Main program */
 void app_main() {
 
