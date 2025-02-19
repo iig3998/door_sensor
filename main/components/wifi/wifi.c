@@ -25,13 +25,13 @@ esp_err_t wifi_init_sta() {
     err = esp_netif_init();
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, network interface not init");
-        return ESP_FAIL;
+        return err;
     }
 
     err = esp_event_loop_create_default();
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, event loop not init");
-        return ESP_FAIL;
+        return err;
     }
 
     /* Set wifi init configuration */
@@ -39,45 +39,46 @@ esp_err_t wifi_init_sta() {
     err = esp_wifi_init(&cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi not init");
-        return ESP_FAIL;
+        return err;
     }
 
     /* Set wifi storage */
     err = esp_wifi_set_storage(WIFI_STORAGE_RAM);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi storage not set");
-        return ESP_FAIL;
+        return err;
     }
 
     /* Set wifi mode */
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi mode not set");
-        return ESP_FAIL;
+        return err;
     }
 
-    /* Start wifi */
+    /* Start WiFi */
     err = esp_wifi_start();
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi not start");
-        return ESP_FAIL;
+        return err;
     }
 
-    /* Set wifi */
+    /* Set WiFi */
     err = esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi channel not set");
-        return ESP_FAIL;
+        return err;
     }
 
     /* Set wifi protocol */
     err = esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi protocol not set");
-        return ESP_FAIL;
+        return err;
     }
 
-    return ESP_OK;
+    return err;
+}
 
 /* Deinit wifi station */
 void wifi_deinit_sta() {

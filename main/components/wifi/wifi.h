@@ -22,6 +22,8 @@ void print_wifi_version();
 /* Init WiFi station */
 esp_err_t wifi_init_sta();
 
+void wifi_deinit_sta();
+
 #ifdef __cplusplus
 }
 #endif
