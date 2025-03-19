@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_wifi.h"
 #include "esp_netif.h"
 
 #include "wifi.h"
 
-/* Print WiFi version */
+/* Print wifi version */
 void print_wifi_version() {
 
     ESP_LOGI(TAG_WIFI, "WiFi version: %u.%u.%u", WIFI_MAJOR, WIFI_MINOR, WIFI_PATCH);
@@ -17,22 +17,9 @@ void print_wifi_version() {
 }
 
 /* Init wifi in station mode */
-esp_err_t wifi_init_sta() {
+esp_err_t init_wifi_sta() {
 
     esp_err_t err = ESP_FAIL;
-
-    /* Init network interface */
-    err = esp_netif_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_WIFI, "Error, network interface not init");
-        return err;
-    }
-
-    err = esp_event_loop_create_default();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_WIFI, "Error, event loop not init");
-        return err;
-    }
 
     /* Set wifi init configuration */
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -56,14 +43,14 @@ esp_err_t wifi_init_sta() {
         return err;
     }
 
-    /* Start WiFi */
+    /* Start wifi */
     err = esp_wifi_start();
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi not start");
         return err;
     }
 
-    /* Set WiFi */
+    /* Set wifi */
     err = esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi channel not set");
@@ -81,9 +68,10 @@ esp_err_t wifi_init_sta() {
 }
 
 /* Deinit wifi station */
-void wifi_deinit_sta() {
+void deinit_wifi_sta() {
 
     esp_wifi_stop();
+
     esp_wifi_deinit();
 
     return;
