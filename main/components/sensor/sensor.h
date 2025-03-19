@@ -7,10 +7,12 @@
 #include "header.h"
 
 #define MAC_SIZE 6
+#define NAME_LEN 15
 
 /* Struct node sensor */
 typedef struct {
 	node_id_header header;
+	char name_sensor[NAME_LEN];
 	bool state;
 	bool battery_low_detect;
 	uint16_t crc;
@@ -19,6 +21,7 @@ typedef struct {
 typedef struct {
 	uint8_t id_node;
 	uint8_t mac[MAC_SIZE];
+	char name_sensor[NAME_LEN];
 	bool state;
 	bool battery_low_detect;
 } __attribute__((__packed__)) node_sensor_t;
@@ -30,21 +33,21 @@ struct node_sensors_list_t {
 	struct node_sensors_list_t *prev;
 } __attribute__((__packed__));
 
-struct node_sensors_list *add_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn);
+struct node_sensors_list_t *add_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn);
 
-struct node_sensors_list *del_sensors_from_list(struct node_sensors_list_t *p, uint8_t id);
+struct node_sensors_list_t *del_sensors_from_list(struct node_sensors_list_t *p, uint8_t id);
 
-struct node_sensors_list *update_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn);
+struct node_sensors_list_t *update_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn);
 
-struct node_sensors_list *get_sensors_from_list(struct node_sensors_list_t *p, uint8_t id);
+struct node_sensors_list_t *get_sensors_from_list(struct node_sensors_list_t *p, uint8_t id);
 
 uint8_t get_num_sensors_from_list();
 
 void print_sensors_list(struct node_sensors_list_t *p);
 
-node_sensor_msg_t build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], bool state, bool battery_low_detect);
+node_sensor_msg_t build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect);
 
-node_sensor_msg_t build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], bool state, bool battery_low_detect);
+node_sensor_msg_t build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect);
 
 node_sensor_msg_t build_response_ack_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[]);
 
