@@ -1,14 +1,17 @@
 menu "Door sensor"
 
+config WIFI_SSID
+    string "Set Access Point"
+    default "ESP32-C3"
+
+config WIFI_PASSWORD
+    string "Password"
+    default "012345678"
+
 config NUMBER_ATTEMPTS
     int "Set retrasmission number"
     default 3
     range 0 10
-
-config ID_SENSOR
-    int "Set ID alarm sensor"
-    default 1
-    range 0 255
 
 config ESPNOW_WIFI_CHANNEL
     int "Set WiFi channel for espnow protocol"
