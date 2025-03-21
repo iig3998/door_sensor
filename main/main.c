@@ -25,10 +25,9 @@
 #include "wifi.h"
 #include "sensor.h"
 #include "web_server.h"
-#include "led.h"
 
 #define GPIO_WAKEUP_PIN       GPIO_NUM_4
-#define CONFIG_BUTTON         GPIO_NUM_9
+#define LED_ON_BOARD          GPIO_NUM_5
 
 #define DEBOUNCE_COUNTER      50
 #define TAG_MAIN              "DOOR_SENSOR"
@@ -136,7 +135,6 @@ static void init_gpio() {
     gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
     gpio_set_direction(GPIO_NUM_1, GPIO_MODE_DISABLE);
     gpio_set_direction(GPIO_NUM_2, GPIO_MODE_DISABLE);
-    gpio_set_direction(GPIO_NUM_5, GPIO_MODE_DISABLE);
     gpio_set_direction(GPIO_NUM_6, GPIO_MODE_DISABLE);
     gpio_set_direction(GPIO_NUM_8, GPIO_MODE_DISABLE);
     gpio_set_direction(GPIO_NUM_10, GPIO_MODE_DISABLE);
@@ -175,8 +173,6 @@ inline static bool start_configuration() {
 
         ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
 
-        set_color_led(GREEN);
-
         /* Init web server */
         err = init_webserver();
         if(err != ESP_OK) {
@@ -190,11 +186,6 @@ inline static bool start_configuration() {
         }
 
         while(!is_device_configured()) {
-            if(!usb_serial_jtag_is_connected()) {
-                set_color_led(RED);
-                vTaskDelay(pdMS_TO_TICKS(2000));
-                esp_restart();
-            }
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
@@ -202,13 +193,6 @@ inline static bool start_configuration() {
 
         /* Stop web server */
         stop_webserver();
-
-        /* Report successful configuration */
-        power_off_led();
-        vTaskDelay(pdMS_TO_TICKS(300));
-        set_color_led(GREEN);
-        vTaskDelay(pdMS_TO_TICKS(300));
-        power_off_led();
 
         return true;
     }
@@ -247,22 +231,22 @@ __attribute__((constructor)) void pre_app_main() {
         .intr_type = GPIO_INTR_DISABLE,
         .pin_bit_mask = BIT(GPIO_WAKEUP_PIN),
         .mode = GPIO_MODE_INPUT,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_ENABLE,
         .pull_up_en = GPIO_PULLUP_DISABLE,
     };
 
     ESP_ERROR_CHECK(gpio_config(&config_reed_switch));
 
-    /* Configure GPIO 9 for reset button */
-    const gpio_config_t config_button = {
+    /* Configure GPIO 5 for led on board */
+    const gpio_config_t config_led = {
         .intr_type = GPIO_INTR_DISABLE,
-        .pin_bit_mask = BIT(CONFIG_BUTTON),
-        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = BIT(LED_ON_BOARD),
+        .mode = GPIO_MODE_OUTPUT,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_ENABLE
+        .pull_up_en = GPIO_PULLUP_DISABLE,
     };
 
-    ESP_ERROR_CHECK(gpio_config(&config_button));
+    ESP_ERROR_CHECK(gpio_config(&config_led));
 
     /* Hold on GPIO 4 */
     gpio_hold_en(GPIO_WAKEUP_PIN);
@@ -331,12 +315,6 @@ void app_main() {
     err = esp_netif_init();
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, network interface not init");
-        esp_restart();
-    }
-
-    /* Init driver led */
-    err = init_led_driver();
-    if (err != ESP_OK) {
         esp_restart();
     }
 
@@ -432,7 +410,7 @@ void app_main() {
     xEventGroupClearBits(xEventGroupDoorSensor, DATA_RECEIVED);
     #endif
 
-    set_color_led(BLUE);
+    gpio_set_level(LED_ON_BOARD, 0);
 
     xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
     do {
@@ -449,12 +427,10 @@ void app_main() {
     }
     while((uxBits & DATA_SENT_FAILED) && num_tentative > 0);
 
-    power_off_led();
+    gpio_set_level(LED_ON_BOARD, 1);
 
     /* Set wakeup source */
     set_wakeup_source();
-
-    deinit_led_driver();
 
     esp_now_deinit();
 
