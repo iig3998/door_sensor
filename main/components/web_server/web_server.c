@@ -120,7 +120,8 @@ const char html_page[] = R"rawliteral(
         <label for="name">Nome dispositivo (max 15 caratteri):</label>
         <input type="text" id="device_name" maxlength="15" required>
         <button onclick="salvaDati()">Salva</button>
-        <button onclick="cancellaDati()">Cancella</button>
+        <button onclick="delete_configuration()" style="background: #d32f2f;">Cancella Configurazione</button>
+        <button onclick="cancellaDati()">Reset</button>
     </div>
 
     <div class="footer">DomoticHouse v0.1.0 by Fabio Molon</div>
@@ -141,6 +142,15 @@ const char html_page[] = R"rawliteral(
         function cancellaDati() {
             document.getElementById("device_id").value = "";
             document.getElementById("device_name").value = "";
+        }
+
+        function delete_configuration() {
+            fetch('/delete')
+                .then(response => response.text())
+                .then(data => {
+                    alert("Configurazione cancellata");
+                    cancellaDati();
+                });
         }
     </script>
 </body>
@@ -289,6 +299,29 @@ esp_err_t save_data_handler(httpd_req_t *req) {
     return ESP_FAIL;
 }
 
+/* Delete data handler */
+esp_err_t delete_data_handler(httpd_req_t *req) {
+
+    ESP_LOGI(TAG_WEBSERVER, "Delete data");
+
+    /* Delete variable in storage */
+    save_uint8_to_nvs("storage", "config", 0);
+    save_uint8_to_nvs("storage", "device_id", 0);
+    save_string_to_nvs("storage", "device_name", '\0');
+
+    httpd_resp_send(req, "Data delete successfully!", HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+
+}
+
+static httpd_uri_t home_page = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = home_page_handler,
+    .user_ctx  = NULL
+};
+
 static httpd_uri_t save_data = {
     .uri = "/save",
     .method = HTTP_GET,
@@ -296,11 +329,11 @@ static httpd_uri_t save_data = {
     .user_ctx = NULL
 };
 
-static httpd_uri_t home_page = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = home_page_handler,
-    .user_ctx  = NULL
+static httpd_uri_t delete_data = {
+    .uri = "/delete",
+    .method = HTTP_DELETE,
+    .handler = delete_data_handler,
+    .user_ctx = NULL
 };
 
 /* Init WiFi station for webserver */
@@ -383,6 +416,7 @@ esp_err_t start_webserver() {
 
     httpd_register_uri_handler(server, &home_page);
     httpd_register_uri_handler(server, &save_data);
+    httpd_register_uri_handler(server, &delete_data);
 
     return err;
 }
