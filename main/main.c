@@ -11,6 +11,7 @@
 
 #include "driver/usb_serial_jtag.h"
 #include "driver/gpio.h"
+
 #include "driver/rtc_io.h"
 #include "driver/adc.h"
 
@@ -26,7 +27,7 @@
 #include "sensor.h"
 #include "web_server.h"
 
-#define GPIO_WAKEUP_PIN       GPIO_NUM_4
+#define GPIO_WAKEUP_PIN       GPIO_NUM_25 //RTC_GPIO6
 #define LED_ON_BOARD          GPIO_NUM_5
 
 #define DEBOUNCE_COUNTER      50
@@ -40,11 +41,11 @@
 #define DATA_SENT_SUCCESS     (1 << 0)
 #define DATA_SENT_FAILED      (1 << 1)
 
-#define DATA_RECEIVED     (1 << 1)
-#define WAKEUP_TIME       10   // seconds
+#define DATA_RECEIVED         (1 << 1)
+#define WAKEUP_TIME           10   // seconds
 
-#define DEVICE_NAME_SIZE  15
-#define MAC_SIZE          6
+#define DEVICE_NAME_SIZE      15
+#define MAC_SIZE              6
 
 EventGroupHandle_t xEventGroupDoorSensor;
 
@@ -116,7 +117,7 @@ void gpio_debounce_filter(gpio_num_t gpio) {
     uint8_t counter = DEBOUNCE_COUNTER;
 
     while(counter > 0) {
-        new_state = gpio_get_level(gpio);
+        new_state = rtc_gpio_get_level(gpio);
         if (new_state != old_state)
             counter = DEBOUNCE_COUNTER;
         else
@@ -132,12 +133,18 @@ void gpio_debounce_filter(gpio_num_t gpio) {
 static void init_gpio() {
 
     /* Disable alls GPIOs */
-    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_DISABLE);
-    gpio_set_direction(GPIO_NUM_1, GPIO_MODE_DISABLE);
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_DISABLE);
-    gpio_set_direction(GPIO_NUM_6, GPIO_MODE_DISABLE);
-    gpio_set_direction(GPIO_NUM_8, GPIO_MODE_DISABLE);
-    gpio_set_direction(GPIO_NUM_10, GPIO_MODE_DISABLE);
+    rtc_gpio_isolate(GPIO_NUM_0);
+    rtc_gpio_isolate(GPIO_NUM_1);
+    rtc_gpio_isolate(GPIO_NUM_3);
+    rtc_gpio_isolate(GPIO_NUM_2);
+    rtc_gpio_isolate(GPIO_NUM_6);
+    rtc_gpio_isolate(GPIO_NUM_7);
+    rtc_gpio_isolate(GPIO_NUM_8);
+    rtc_gpio_isolate(GPIO_NUM_9);
+    rtc_gpio_isolate(GPIO_NUM_10);
+    rtc_gpio_isolate(GPIO_NUM_11);
+
+    rtc_gpio_isolate(GPIO_NUM_12);
 
     return;
 }
@@ -146,13 +153,13 @@ inline static void set_wakeup_source() {
 
     uint8_t counter = 0;
 
-    /* Enable wakeup from GPIO 4 */
+    /* Enable wakeup from GPIO 25 */
     if ((counter == 0) && (new_state == 0)) {
         ESP_LOGI(TAG_MAIN, "Door open");
-        ESP_ERROR_CHECK(gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
+        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
     } else if ((counter == 0) && (new_state == 1)) {
         ESP_LOGI(TAG_MAIN, "Door close");
-        ESP_ERROR_CHECK(gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_LOW_LEVEL));
+        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_LOW_LEVEL));
     }
 
     /* Enable timer wakeup every WAKEUP_TIME seconds */
@@ -224,18 +231,17 @@ __attribute__((constructor)) void pre_app_main() {
     /* Init gpio */
     init_gpio();
 
-    assert (esp_sleep_is_valid_wakeup_gpio(GPIO_WAKEUP_PIN) == true);
+    assert(esp_sleep_is_valid_wakeup_gpio(GPIO_WAKEUP_PIN) == true);
     
-    /* Configure GPIO 4 for reed switch */
-    const gpio_config_t config_reed_switch = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .pin_bit_mask = BIT(GPIO_WAKEUP_PIN),
-        .mode = GPIO_MODE_INPUT,
-        .pull_down_en = GPIO_PULLDOWN_ENABLE,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-    };
+    assert(rtc_gpio_is_valid_gpio(GPIO_WAKEUP_PIN) == true);
 
-    ESP_ERROR_CHECK(gpio_config(&config_reed_switch));
+    /* Configure GPIO 25 for reed switch */
+    rtc_gpio_init(GPIO_WAKEUP_PIN);
+    rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN);
+    rtc_gpio_pulldown_en(GPIO_WAKEUP_PIN);
+
+    //esp_err_t rtc_gpio_set_direction_in_sleep(gpio_num_t gpio_num, rtc_gpio_mode_t mode)
 
     /* Configure GPIO 5 for led on board */
     const gpio_config_t config_led = {
@@ -248,37 +254,37 @@ __attribute__((constructor)) void pre_app_main() {
 
     ESP_ERROR_CHECK(gpio_config(&config_led));
 
-    /* Hold on GPIO 4 */
-    gpio_hold_en(GPIO_WAKEUP_PIN);
-    gpio_deep_sleep_hold_en();
+    /* Hold on GPIO 25 */
+    rtc_gpio_hold_en(GPIO_WAKEUP_PIN);
 
     return;
 }
+
 
 #if 0
 void app_main() {
 
     int adc_data = 0;
-    adc_oneshot_unit_handle_t adc1_handle;
+    adc_oneshot_unit_handle_t adc2_handle;
     // IO35
     adc_oneshot_unit_init_cfg_t init_config1 = {
-        .unit_id = ADC_UNIT_1,
+        .unit_id = ADC_UNIT_2,
         .ulp_mode = ADC_ULP_MODE_DISABLE,
     };
 
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc2_handle));
 
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_12,
         .atten = ADC_ATTEN_DB_6,
     };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_3, &config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config));
 
     assert(esp_sleep_is_valid_wakeup_gpio(GPIO_WAKEUP_PIN) == true);
 
     while(1) {
 
-            ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_data));
+            ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &adc_data));
             ESP_LOGI(TAG_MAIN, "ADC data: %d", adc_data);
             vTaskDelay(pdMS_TO_TICKS(1000));
 
@@ -291,8 +297,6 @@ void app_main() {
 
 /* Main program */
 void app_main() {
-
-    vTaskDelay(pdMS_TO_TICKS(10000));
 
     esp_err_t err = ESP_FAIL;
     uint8_t num_tentative = NUMBER_ATTEMPTS;
@@ -452,6 +456,7 @@ void app_main() {
 void app_main(void) {
     ESP_LOGI("DEEP_SLEEP", "Configurazione wake-up sul GPIO %d", WAKEUP_GPIO);
 
+    /*
     if ((gpio_get_level(WAKEUP_GPIO) == 0)) {
         ESP_LOGI(TAG_MAIN, "Door open");
         ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(1 << GPIO_WAKEUP_PIN, ESP_GPIO_WAKEUP_GPIO_HIGH));
@@ -459,6 +464,7 @@ void app_main(void) {
         ESP_LOGI(TAG_MAIN, "Door close");
         ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(1 << GPIO_WAKEUP_PIN, ESP_GPIO_WAKEUP_GPIO_LOW));
     }
+    */
 
     vTaskDelay(pdMS_TO_TICKS(500));
 
