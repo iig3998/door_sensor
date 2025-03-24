@@ -2,7 +2,7 @@ menu "Door sensor"
 
 config WIFI_SSID
     string "Set Access Point"
-    default "ESP32-C3"
+    default "ESP32"
 
 config WIFI_PASSWORD
     string "Password"
