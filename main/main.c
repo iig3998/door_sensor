@@ -308,6 +308,30 @@ void app_main() {
         }
 
     ESP_ERROR_CHECK(adc_oneshot_del_unit(adc1_handle));
+/**/
+static bool check_usb_connection() {
+
+    int adc_data = 0;
+    adc_oneshot_unit_handle_t adc2_handle;
+    adc_oneshot_unit_init_cfg_t init_config2 = {
+        .unit_id = ADC_UNIT_2,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
+
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_12,
+        .atten = ADC_ATTEN_DB_6,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, ADC_CHANNEL_0, &config));
+
+    ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, ADC_CHANNEL_0, &adc_data));
+    ESP_LOGI(TAG_MAIN, "ADC data: %d", adc_data);
+
+    ESP_ERROR_CHECK(adc_oneshot_del_unit(adc2_handle));
+
+    return true;
 }
 #endif
 
