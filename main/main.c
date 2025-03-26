@@ -135,16 +135,32 @@ static void init_gpio() {
     /* Disable alls GPIOs */
     rtc_gpio_isolate(GPIO_NUM_0);
     rtc_gpio_isolate(GPIO_NUM_1);
-    rtc_gpio_isolate(GPIO_NUM_3);
     rtc_gpio_isolate(GPIO_NUM_2);
-    rtc_gpio_isolate(GPIO_NUM_6);
-    rtc_gpio_isolate(GPIO_NUM_7);
-    rtc_gpio_isolate(GPIO_NUM_8);
-    rtc_gpio_isolate(GPIO_NUM_9);
-    rtc_gpio_isolate(GPIO_NUM_10);
-    rtc_gpio_isolate(GPIO_NUM_11);
+    rtc_gpio_isolate(GPIO_NUM_3);
+    rtc_gpio_isolate(GPIO_NUM_4);
 
     rtc_gpio_isolate(GPIO_NUM_12);
+    rtc_gpio_isolate(GPIO_NUM_13);
+    rtc_gpio_isolate(GPIO_NUM_14);
+    rtc_gpio_isolate(GPIO_NUM_15);
+    rtc_gpio_isolate(GPIO_NUM_16);
+    rtc_gpio_isolate(GPIO_NUM_17);
+    rtc_gpio_isolate(GPIO_NUM_18);
+    rtc_gpio_isolate(GPIO_NUM_19);
+
+    rtc_gpio_isolate(GPIO_NUM_21);
+    rtc_gpio_isolate(GPIO_NUM_22);
+    rtc_gpio_isolate(GPIO_NUM_23);
+
+    rtc_gpio_isolate(GPIO_NUM_26);
+    rtc_gpio_isolate(GPIO_NUM_27);
+
+    rtc_gpio_isolate(GPIO_NUM_32);
+    rtc_gpio_isolate(GPIO_NUM_33);
+    rtc_gpio_isolate(GPIO_NUM_34);
+    rtc_gpio_isolate(GPIO_NUM_36);
+    rtc_gpio_isolate(GPIO_NUM_39);
+
 
     return;
 }
