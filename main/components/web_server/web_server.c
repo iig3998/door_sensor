@@ -20,6 +20,7 @@
 
 static httpd_handle_t server = NULL;
 static EventGroupHandle_t wifi_event_group;
+static bool status_conf = false;
 
 const char html_page[] = R"rawliteral(
 <!DOCTYPE html>
@@ -120,7 +121,6 @@ const char html_page[] = R"rawliteral(
         <label for="name">Nome dispositivo (max 15 caratteri):</label>
         <input type="text" id="device_name" maxlength="15" required>
         <button onclick="salvaDati()">Salva</button>
-        <button onclick="delete_configuration()" style="background: #d32f2f;">Cancella Configurazione</button>
         <button onclick="cancellaDati()">Reset</button>
     </div>
 
@@ -144,14 +144,6 @@ const char html_page[] = R"rawliteral(
             document.getElementById("device_name").value = "";
         }
 
-        function delete_configuration() {
-            fetch('/delete')
-                .then(response => response.text())
-                .then(data => {
-                    alert("Configurazione cancellata");
-                    cancellaDati();
-                });
-        }
     </script>
 </body>
 </html>
@@ -233,20 +225,10 @@ void get_device_name(char *device_name, uint8_t len) {
     return;
 }
 
-/* Check if device is configured */
-uint8_t is_device_configured() {
+/* */
+bool get_status_conf() {
 
-    esp_err_t err = ESP_FAIL;
-    uint8_t value = 0;
-
-    err = read_uint8_from_nvs("storage", "config", &value);
-    if(err != ESP_OK) {
-        ESP_LOGW(TAG_WEBSERVER, "Warning, variable config not present. Set config to 0");
-        /* First configuration */
-        save_uint8_to_nvs("storage", "config", value);
-    }
-
-    return value;
+    return status_conf;
 }
 
 /* Home page handler */
@@ -283,12 +265,19 @@ esp_err_t save_data_handler(httpd_req_t *req) {
 
             ESP_LOGI(TAG_WEBSERVER, "Data saved: ID number: %s, Name sensor: %s", device_number, device_name);
 
+            /* Delete old configuration */
+            save_uint8_to_nvs("storage", "config", 0);
+            save_uint8_to_nvs("storage", "device_id", 0);
+            save_string_to_nvs("storage", "device_name", "");
+
             /* Save variable in storage */
             save_uint8_to_nvs("storage", "config", 1);
             save_uint8_to_nvs("storage", "device_id", atoi(device_number));
             save_string_to_nvs("storage", "device_name", device_name);
 
             httpd_resp_send(req, "Data saved successfully!", HTTPD_RESP_USE_STRLEN);
+
+            status_conf = true;
 
             return ESP_OK;
         }
@@ -297,22 +286,6 @@ esp_err_t save_data_handler(httpd_req_t *req) {
     httpd_resp_send_500(req);
 
     return ESP_FAIL;
-}
-
-/* Delete data handler */
-esp_err_t delete_data_handler(httpd_req_t *req) {
-
-    ESP_LOGI(TAG_WEBSERVER, "Delete data");
-
-    /* Delete variable in storage */
-    save_uint8_to_nvs("storage", "config", 0);
-    save_uint8_to_nvs("storage", "device_id", 0);
-    save_string_to_nvs("storage", "device_name", '\0');
-
-    httpd_resp_send(req, "Data delete successfully!", HTTPD_RESP_USE_STRLEN);
-
-    return ESP_OK;
-
 }
 
 static httpd_uri_t home_page = {
@@ -326,13 +299,6 @@ static httpd_uri_t save_data = {
     .uri = "/save",
     .method = HTTP_GET,
     .handler = save_data_handler,
-    .user_ctx = NULL
-};
-
-static httpd_uri_t delete_data = {
-    .uri = "/delete",
-    .method = HTTP_DELETE,
-    .handler = delete_data_handler,
     .user_ctx = NULL
 };
 
@@ -414,9 +380,10 @@ esp_err_t start_webserver() {
         return err;
     }
 
+    status_conf = false;
+
     httpd_register_uri_handler(server, &home_page);
     httpd_register_uri_handler(server, &save_data);
-    httpd_register_uri_handler(server, &delete_data);
 
     return err;
 }

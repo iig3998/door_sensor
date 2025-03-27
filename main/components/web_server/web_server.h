@@ -13,7 +13,7 @@ void get_device_name(char *device_name, uint8_t len);
 
 uint8_t get_device_id();
 
-uint8_t is_device_configured();
+bool get_status_conf();
 
 esp_err_t init_webserver();
 
