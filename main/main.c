@@ -9,35 +9,34 @@
 #include "esp_mac.h"
 #include "esp_wifi.h"
 
-#include "driver/usb_serial_jtag.h"
 #include "driver/gpio.h"
-
 #include "driver/rtc_io.h"
-#include "driver/adc.h"
 
 #include "esp_adc/adc_oneshot.h"
+#include "driver/adc.h"
+#include "esp_adc_cal.h"
+
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "nvs_mgmt.h"
-#include "common.h"
-#include "header.h"
 #include "wifi.h"
 #include "sensor.h"
 #include "web_server.h"
 
 #define GPIO_WAKEUP_PIN       GPIO_NUM_25 //RTC_GPIO6
 #define LED_ON_BOARD          GPIO_NUM_5
-
+#define NUM_SAMPLES           64
 #define DEBOUNCE_COUNTER      50
+#define DEFAULT_VREF          1100
 #define TAG_MAIN              "DOOR_SENSOR"
 
 #define NUMBER_ATTEMPTS       3
 
 #define ESPNOW_WIFI_CHANNEL   7
 #define RETRASMISSION_TIME_MS 50
-#define VREF_STATE_BATTERY    3.15
+#define VREF_STATE_BATTERY    3.6
 #define DATA_SENT_SUCCESS     (1 << 0)
 #define DATA_SENT_FAILED      (1 << 1)
 
@@ -111,6 +110,34 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
     return;
 }
 
+/* Check usb connection */
+static bool check_usb_connection() {
+
+    int adc_data = 0;
+    adc_oneshot_unit_handle_t adc2_handle;
+    adc_oneshot_unit_init_cfg_t init_config2 = {
+        .unit_id = ADC_UNIT_2,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
+
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_12,
+        .atten = ADC_ATTEN_DB_12,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, ADC_CHANNEL_0, &config));
+
+    ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, ADC_CHANNEL_0, &adc_data));
+    ESP_LOGI(TAG_MAIN, "USB adc data: %d", adc_data);
+    ESP_ERROR_CHECK(adc_oneshot_del_unit(adc2_handle));
+
+    if (adc_data > 4000)
+        return true;
+
+    return false;
+}
+
 /* GPIO debounce filter */
 void gpio_debounce_filter(gpio_num_t gpio) {
 
@@ -132,35 +159,24 @@ void gpio_debounce_filter(gpio_num_t gpio) {
 /* Init GPIOs */
 static void init_gpio() {
 
-    /* Disable alls GPIOs */
+    /* Isolate alls GPIOs */
     rtc_gpio_isolate(GPIO_NUM_0);
-    rtc_gpio_isolate(GPIO_NUM_1);
-    rtc_gpio_isolate(GPIO_NUM_2);
-    rtc_gpio_isolate(GPIO_NUM_3);
-    rtc_gpio_isolate(GPIO_NUM_4);
 
     rtc_gpio_isolate(GPIO_NUM_12);
     rtc_gpio_isolate(GPIO_NUM_13);
     rtc_gpio_isolate(GPIO_NUM_14);
-    rtc_gpio_isolate(GPIO_NUM_15);
-    rtc_gpio_isolate(GPIO_NUM_16);
-    rtc_gpio_isolate(GPIO_NUM_17);
-    rtc_gpio_isolate(GPIO_NUM_18);
-    rtc_gpio_isolate(GPIO_NUM_19);
-
-    rtc_gpio_isolate(GPIO_NUM_21);
-    rtc_gpio_isolate(GPIO_NUM_22);
-    rtc_gpio_isolate(GPIO_NUM_23);
-
+    
     rtc_gpio_isolate(GPIO_NUM_26);
     rtc_gpio_isolate(GPIO_NUM_27);
 
     rtc_gpio_isolate(GPIO_NUM_32);
     rtc_gpio_isolate(GPIO_NUM_33);
     rtc_gpio_isolate(GPIO_NUM_34);
+    rtc_gpio_isolate(GPIO_NUM_35);
     rtc_gpio_isolate(GPIO_NUM_36);
+    rtc_gpio_isolate(GPIO_NUM_37);
+    rtc_gpio_isolate(GPIO_NUM_38);
     rtc_gpio_isolate(GPIO_NUM_39);
-
 
     return;
 }
@@ -169,7 +185,9 @@ inline static void set_wakeup_source() {
 
     uint8_t counter = 0;
 
-    /* Enable wakeup from GPIO 25 */
+    /* Enable wakeup from GPIO 25 (RTC_GPIO6) */
+    esp_sleep_enable_gpio_wakeup();
+
     if ((counter == 0) && (new_state == 0)) {
         ESP_LOGI(TAG_MAIN, "Door open");
         ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
@@ -179,10 +197,7 @@ inline static void set_wakeup_source() {
     }
 
     /* Enable timer wakeup every WAKEUP_TIME seconds */
-    /*err = esp_sleep_enable_timer_wakeup(WAKEUP_TIME * 1000000);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, wakeup from timer not enable");
-    }*/
+    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(WAKEUP_TIME * 1000000));
 
     return;
 }
@@ -190,7 +205,7 @@ inline static void set_wakeup_source() {
 /* Start configuration device */
 inline static bool start_configuration() {
 
-    if(!is_device_configured()) {
+    if(check_usb_connection()) {
 
         esp_err_t err = ESP_FAIL;
 
@@ -208,7 +223,7 @@ inline static bool start_configuration() {
             return false;
         }
 
-        while(!is_device_configured()) {
+        while(!get_status_conf()) {
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
@@ -247,8 +262,6 @@ __attribute__((constructor)) void pre_app_main() {
     /* Init gpio */
     init_gpio();
 
-    assert(esp_sleep_is_valid_wakeup_gpio(GPIO_WAKEUP_PIN) == true);
-    
     assert(rtc_gpio_is_valid_gpio(GPIO_WAKEUP_PIN) == true);
 
     /* Configure GPIO 25 for reed switch */
@@ -256,8 +269,6 @@ __attribute__((constructor)) void pre_app_main() {
     rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY);
     rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN);
     rtc_gpio_pulldown_en(GPIO_WAKEUP_PIN);
-
-    //esp_err_t rtc_gpio_set_direction_in_sleep(gpio_num_t gpio_num, rtc_gpio_mode_t mode)
 
     /* Configure GPIO 5 for led on board */
     const gpio_config_t config_led = {
@@ -276,64 +287,35 @@ __attribute__((constructor)) void pre_app_main() {
     return;
 }
 
+static bool read_status_battery() {
 
-#if 0
-void app_main() {
+    int32_t adc_raw;
+    float v_batt;
 
-    int adc_data = 0;
-    adc_oneshot_unit_handle_t adc2_handle;
-    // IO35
-    adc_oneshot_unit_init_cfg_t init_config1 = {
-        .unit_id = ADC_UNIT_2,
-        .ulp_mode = ADC_ULP_MODE_DISABLE,
-    };
+    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
 
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc2_handle));
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_12);
 
-    adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_12,
-        .atten = ADC_ATTEN_DB_6,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config));
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
 
-    assert(esp_sleep_is_valid_wakeup_gpio(GPIO_WAKEUP_PIN) == true);
+    adc_raw = 0;
+    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
+        adc_raw += adc1_get_raw(ADC1_CHANNEL_7);
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
 
-    while(1) {
+    adc_raw = adc_raw / NUM_SAMPLES;
 
-            ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &adc_data));
-            ESP_LOGI(TAG_MAIN, "ADC data: %d", adc_data);
-            vTaskDelay(pdMS_TO_TICKS(1000));
+    v_batt = (esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / 1000.0) * 2;
 
-            ESP_LOGI(TAG_MAIN, "GPIO4: %u", gpio_get_level(GPIO_NUM_4));
-        }
+    ESP_LOGI(TAG_MAIN, "Battery voltage: %.2f V", v_batt);
 
-    ESP_ERROR_CHECK(adc_oneshot_del_unit(adc1_handle));
-/**/
-static bool check_usb_connection() {
-
-    int adc_data = 0;
-    adc_oneshot_unit_handle_t adc2_handle;
-    adc_oneshot_unit_init_cfg_t init_config2 = {
-        .unit_id = ADC_UNIT_2,
-        .ulp_mode = ADC_ULP_MODE_DISABLE,
-    };
-
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
-
-    adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_12,
-        .atten = ADC_ATTEN_DB_6,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, ADC_CHANNEL_0, &config));
-
-    ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, ADC_CHANNEL_0, &adc_data));
-    ESP_LOGI(TAG_MAIN, "ADC data: %d", adc_data);
-
-    ESP_ERROR_CHECK(adc_oneshot_del_unit(adc2_handle));
+    if (v_batt < VREF_STATE_BATTERY)
+        return false;
 
     return true;
 }
-#endif
 
 /* Main program */
 void app_main() {
@@ -369,9 +351,9 @@ void app_main() {
     }
 
     /* Configure device */
-    if(start_configuration()) {
-        ESP_LOGI(TAG_MAIN, "Door sensor already configurated!");
-    }
+    /*if(start_configuration()) {
+        ESP_LOGI(TAG_MAIN, "Configuration done");
+    }*/
 
     /* Reads device name */
     get_device_name(device_name, sizeof(device_name));
@@ -381,27 +363,15 @@ void app_main() {
         case ESP_SLEEP_WAKEUP_TIMER:
             ESP_LOGI(TAG_MAIN, "Wakeup from timer");
 
-            /* Configure ADC and read value */
-            adc1_config_width(ADC_WIDTH_BIT_12);
-            adc1_config_channel_atten(ADC1_CHANNEL_3, ADC_ATTEN_DB_12);
-
-            int adc_data = adc1_get_raw(ADC1_CHANNEL_3);
-            float voltage = (adc_data / 4095.0) * 3.3;
-
-            if (voltage <= VREF_STATE_BATTERY) {
-                battery_state = true;
-            }
-
-            ESP_LOGI(TAG_MAIN, "ADC data: %d, Voltage: %.2fV", adc_data, voltage);
-
-            msg = build_request_update_sensor_msg(get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, battery_state);
+            /* Configure ADC and read value (IO35 -> A1_7) */
+            msg = build_request_update_sensor_msg(get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery);
 
             break;
         case ESP_SLEEP_WAKEUP_GPIO:
             ESP_LOGI(TAG_MAIN, "Wakeup from GPIO %u", GPIO_WAKEUP_PIN);
 
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            msg = build_request_update_sensor_msg(get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, battery_state);
+            msg = build_request_update_sensor_msg(get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery);
 
             break;
         default:
@@ -489,26 +459,3 @@ void app_main() {
 
     return;
 }
-
-#if 0
-#define WAKEUP_GPIO GPIO_NUM_4
-
-void app_main(void) {
-    ESP_LOGI("DEEP_SLEEP", "Configurazione wake-up sul GPIO %d", WAKEUP_GPIO);
-
-    /*
-    if ((gpio_get_level(WAKEUP_GPIO) == 0)) {
-        ESP_LOGI(TAG_MAIN, "Door open");
-        ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(1 << GPIO_WAKEUP_PIN, ESP_GPIO_WAKEUP_GPIO_HIGH));
-    } else if ((gpio_get_level(WAKEUP_GPIO) == 1)) {
-        ESP_LOGI(TAG_MAIN, "Door close");
-        ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(1 << GPIO_WAKEUP_PIN, ESP_GPIO_WAKEUP_GPIO_LOW));
-    }
-    */
-
-    vTaskDelay(pdMS_TO_TICKS(500));
-
-    ESP_LOGI("DEEP_SLEEP", "Entrando in deep sleep...");
-    esp_deep_sleep_start();
-}
-#endif
