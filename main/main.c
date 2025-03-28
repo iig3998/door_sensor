@@ -113,26 +113,29 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
 /* Check usb connection */
 static bool check_usb_connection() {
 
-    int adc_data = 0;
-    adc_oneshot_unit_handle_t adc2_handle;
-    adc_oneshot_unit_init_cfg_t init_config2 = {
-        .unit_id = ADC_UNIT_2,
-        .ulp_mode = ADC_ULP_MODE_DISABLE,
-    };
+    int32_t adc_raw;
+    float v_batt;
 
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
+    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
 
-    adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_12,
-        .atten = ADC_ATTEN_DB_12,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, ADC_CHANNEL_0, &config));
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC2_CHANNEL_0, ADC_ATTEN_DB_12);
 
-    ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, ADC_CHANNEL_0, &adc_data));
-    ESP_LOGI(TAG_MAIN, "USB adc data: %d", adc_data);
-    ESP_ERROR_CHECK(adc_oneshot_del_unit(adc2_handle));
+    esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
 
-    if (adc_data > 4000)
+    adc_raw = 0;
+    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
+        adc_raw += adc1_get_raw(ADC2_CHANNEL_0);
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+
+    adc_raw = adc_raw / NUM_SAMPLES;
+
+    v_batt = esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / 0.6875;
+
+    ESP_LOGI(TAG_MAIN, "USB voltage: %.2f V", v_batt);
+
+    if (v_batt > 3.5)
         return true;
 
     return false;
@@ -157,7 +160,7 @@ void gpio_debounce_filter(gpio_num_t gpio) {
 }
 
 /* Init GPIOs */
-static void init_gpio() {
+inline static void init_gpio() {
 
     /* Isolate alls GPIOs */
     rtc_gpio_isolate(GPIO_NUM_0);
@@ -203,39 +206,68 @@ inline static void set_wakeup_source() {
 }
 
 /* Start configuration device */
-inline static bool start_configuration() {
+inline static esp_err_t start_configuration() {
 
     if(check_usb_connection()) {
 
         esp_err_t err = ESP_FAIL;
+        httpd_handle_t server = NULL;
+
+        gpio_set_level(LED_ON_BOARD, 0);
 
         ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
 
-        /* Init web server */
-        err = init_webserver();
-        if(err != ESP_OK) {
-            return false;
+        wifi_init_softap();
+        
+        err = start_webserver(server);
+        if (err != ESP_OK) {
+            return err;
         }
 
-        /* Start web server */
-        err = start_webserver();
-        if(err != ESP_OK) {
-            return false;
-        }
-
-        while(!get_status_conf()) {
+        while(!get_conf()) {
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
+        stop_webserver(server);
+
         ESP_LOGI(TAG_MAIN, "Exit from configuration mode");
 
-        /* Stop web server */
-        stop_webserver();
+        gpio_set_level(LED_ON_BOARD, 1);
 
-        return true;
+        return err;
     }
 
-    return false;
+    return ESP_OK;
+}
+
+static bool read_status_battery() {
+
+    int32_t adc_raw;
+    float v_batt;
+
+    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_12);
+
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
+
+    adc_raw = 0;
+    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
+        adc_raw += adc1_get_raw(ADC1_CHANNEL_7);
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+
+    adc_raw = adc_raw / NUM_SAMPLES;
+
+    v_batt = (esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / 1000.0) * 2;
+
+    ESP_LOGI(TAG_MAIN, "Battery voltage: %.2f V", v_batt);
+
+    if (v_batt < VREF_STATE_BATTERY)
+        return false;
+
+    return true;
 }
 
 /* Pre app main program */
@@ -287,36 +319,6 @@ __attribute__((constructor)) void pre_app_main() {
     return;
 }
 
-static bool read_status_battery() {
-
-    int32_t adc_raw;
-    float v_batt;
-
-    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_12);
-
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
-
-    adc_raw = 0;
-    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
-        adc_raw += adc1_get_raw(ADC1_CHANNEL_7);
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-
-    adc_raw = adc_raw / NUM_SAMPLES;
-
-    v_batt = (esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / 1000.0) * 2;
-
-    ESP_LOGI(TAG_MAIN, "Battery voltage: %.2f V", v_batt);
-
-    if (v_batt < VREF_STATE_BATTERY)
-        return false;
-
-    return true;
-}
-
 /* Main program */
 void app_main() {
 
@@ -351,34 +353,48 @@ void app_main() {
     }
 
     /* Configure device */
-    /*if(start_configuration()) {
-        ESP_LOGI(TAG_MAIN, "Configuration done");
-    }*/
+    err = start_configuration();
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG_MAIN, "Door sensor is configured. Remove USB cable and restart device");
+        while(1) {
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        }
+    } else {
+        ESP_LOGE(TAG_MAIN, "Error, event loop not init");
+        esp_restart();
+    }
 
-    /* Reads device name */
-    get_device_name(device_name, sizeof(device_name));
-    
+    /* Check status configuration */
+    while(!get_conf()) {
+        ESP_LOGW(TAG_MAIN, "Door sensor not configured. Please restart device and configure it");
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_TIMER:
             ESP_LOGI(TAG_MAIN, "Wakeup from timer");
 
-            /* Configure ADC and read value (IO35 -> A1_7) */
-            msg = build_request_update_sensor_msg(get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery);
+            get_device_name(device_name, sizeof(device_name));
+            gpio_debounce_filter(GPIO_WAKEUP_PIN);
+            msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
 
-            break;
+        break;
         case ESP_SLEEP_WAKEUP_GPIO:
             ESP_LOGI(TAG_MAIN, "Wakeup from GPIO %u", GPIO_WAKEUP_PIN);
 
+            get_device_name(device_name, sizeof(device_name));
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            msg = build_request_update_sensor_msg(get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery);
+            msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
 
-            break;
+        break;
         default:
-            ESP_LOGD(TAG_MAIN, "Warning, source wakeup unknown");
+            ESP_LOGW(TAG_MAIN, "Warning, source wakeup unknown. First boot");
 
+            get_device_name(device_name, sizeof(device_name));
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            break;
+            msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
+        break;
     }
 
     /* Init WiFi station */
@@ -424,8 +440,6 @@ void app_main() {
     xEventGroupClearBits(xEventGroupDoorSensor, DATA_RECEIVED);
     #endif
 
-    gpio_set_level(LED_ON_BOARD, 0);
-
     xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
     do {
         /* Send packet */
@@ -440,8 +454,6 @@ void app_main() {
         vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
     }
     while((uxBits & DATA_SENT_FAILED) && num_tentative > 0);
-
-    gpio_set_level(LED_ON_BOARD, 1);
 
     /* Set wakeup source */
     set_wakeup_source();
