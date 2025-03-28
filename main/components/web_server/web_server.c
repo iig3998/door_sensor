@@ -3,7 +3,6 @@
 
 #include "esp_mac.h"
 #include "esp_wifi.h"
-#include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
@@ -11,9 +10,7 @@
 #include "nvs_mgmt.h"
 #include "web_server.h"
 
-
 #define WIFI_SSID            "DOOR_SENSOR"
-#define WIFI_PASS            "12345678"
 #define MAX_STA_CONN         1
 #define TAG_WEBSERVER        "WEB_SERVER"
 #define DEVICE_NUMBER_SIZE   4
@@ -285,7 +282,7 @@ void wifi_init_softap() {
     
     esp_wifi_start();
 
-    ESP_LOGI(TAG_WEBSERVER, "Access Point run. SSID:%s Password:%s", WIFI_SSID, WIFI_PASS);
+    ESP_LOGI(TAG_WEBSERVER, "Access Point run. SSID:%s", WIFI_SSID);
 
     return;
 }
