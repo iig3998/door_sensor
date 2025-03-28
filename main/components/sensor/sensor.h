@@ -45,9 +45,7 @@ uint8_t get_num_sensors_from_list();
 
 void print_sensors_list(struct node_sensors_list_t *p);
 
-node_sensor_msg_t build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect);
-
-node_sensor_msg_t build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect);
+node_sensor_msg_t build_request_cmd_sensor_msg(enum cmd_type cmd, uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect);
 
 node_sensor_msg_t build_response_ack_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[]);
 

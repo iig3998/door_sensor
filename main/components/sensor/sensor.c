@@ -170,31 +170,11 @@ void print_sensors_list(struct node_sensors_list_t *p) {
     return;
 }
 
-node_sensor_msg_t build_request_add_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect) {
+node_sensor_msg_t build_request_cmd_sensor_msg(enum cmd_type cmd, uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect) {
 
     node_sensor_msg_t msg;
 
-    msg.header.cmd = ADD;
-    msg.header.id_msg = id_msg;
-    msg.header.id_node = id_node;
-    memcpy(msg.header.mac, mac, MAC_SIZE);
-
-    msg.header.node = SENSOR;
-    msg.header.msg = REQUEST;
-
-    memcpy(msg.name_sensor, name_sensor, 15);
-    msg.state = state;
-    msg.battery_low_detect = battery_low_detect;
-    msg.crc = calc_crc16((uint8_t *)&msg, sizeof(msg) - sizeof(msg.crc));
-
-    return msg;
-}
-
-node_sensor_msg_t build_request_update_sensor_msg(uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_sensor, bool state, bool battery_low_detect) {
-
-    node_sensor_msg_t msg;
-
-    msg.header.cmd = UPDATE;
+    msg.header.cmd = cmd;
     msg.header.id_msg = id_msg;
     msg.header.id_node = id_node;
     memcpy(msg.header.mac, mac, MAC_SIZE);
