@@ -9,6 +9,10 @@
 #define MAC_SIZE 6
 #define NAME_LEN 15
 
+#define MAJOR_SENSOR_VER 0
+#define MINOR_SENSOR_VER 1
+#define PATCH_SENSOR_VER 0
+
 /* Struct node sensor */
 typedef struct {
 	node_id_header header;
@@ -32,6 +36,8 @@ struct node_sensors_list_t {
 	struct node_sensors_list_t *next;
 	struct node_sensors_list_t *prev;
 } __attribute__((__packed__));
+
+void print_sensor_version();
 
 struct node_sensors_list_t *add_sensors_to_list(struct node_sensors_list_t *p, node_sensor_msg_t pn);
 

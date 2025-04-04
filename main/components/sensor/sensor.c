@@ -10,6 +10,14 @@
 
 static uint8_t counter_node_sensors = 0;
 
+/* Print version library */
+void print_sensor_version() {
+
+    ESP_LOGI(TAG_SENSOR, "Sensor version: %u.%u.%u", MAJOR_SENSOR_VER, MINOR_SENSOR_VER, PATCH_SENSOR_VER);
+
+    return;
+}
+
 /* Return tail sensors list */
 static struct node_sensors_list_t *get_tail_sensors_list(struct node_sensors_list_t *p) {
 
