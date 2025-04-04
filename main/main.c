@@ -294,10 +294,10 @@ __attribute__((constructor)) void pre_app_main() {
     assert(rtc_gpio_is_valid_gpio(GPIO_WAKEUP_PIN) == true);
 
     /* Configure GPIO 25 for reed switch */
-    rtc_gpio_init(GPIO_WAKEUP_PIN);
-    rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY);
-    rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN);
-    rtc_gpio_pulldown_en(GPIO_WAKEUP_PIN);
+    ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY));
+    ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_pulldown_en(GPIO_WAKEUP_PIN));
 
     /* Configure GPIO 5 for led on board */
     const gpio_config_t config_led = {
