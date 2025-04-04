@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define MAJOR_HEADER_VER 0
+#define MINOR_HEADER_VER 1
+#define PATCH_HEADER_VER 0
+
 #define MAC_SIZE 6
 
 enum node_type {
