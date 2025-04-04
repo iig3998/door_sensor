@@ -21,7 +21,7 @@
 #include "sensor.h"
 #include "web_server.h"
 
-#define GPIO_WAKEUP_PIN       GPIO_NUM_25 //RTC_GPIO6
+#define GPIO_WAKEUP_PIN       GPIO_NUM_25
 #define LED_ON_BOARD          GPIO_NUM_5
 #define DEBOUNCE_COUNTER      50
 #define TAG_MAIN              "DOOR_SENSOR"
@@ -102,6 +102,7 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
     return;
 }
 
+/* Send message by espnow protocol */
 static bool send_message(uint8_t dest_mac[], node_sensor_msg_t msg) {
 
     esp_err_t err = ESP_FAIL;
