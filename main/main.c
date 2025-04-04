@@ -109,6 +109,32 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
     return;
 }
 
+static bool send_message(uint8_t dest_mac[], node_sensor_msg_t msg) {
+
+    esp_err_t err = ESP_FAIL;
+    uint8_t num_tentative = NUMBER_ATTEMPTS;
+    EventBits_t uxBits;
+
+    xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
+    do {
+        /* Send packet */
+        err = esp_now_send(dest_mac, (uint8_t *)&msg, sizeof(msg));
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_MAIN, "Error, data not sent ... retry");
+            num_tentative = 0;
+        }
+        /* Wait until the data is sent */
+        uxBits = xEventGroupWaitBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED, pdTRUE, pdFALSE, portMAX_DELAY);
+        num_tentative--;
+        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
+    }
+    while((uxBits & DATA_SENT_FAILED) && num_tentative > 0);
+
+    if(!num_tentative)
+        return false;
+
+    return true;
+}
 /* Check usb connection */
 static bool check_usb_connection() {
 
