@@ -358,9 +358,44 @@ void app_main() {
     }
 
     /* Check status configuration */
-    while(!get_conf()) {
-        ESP_LOGW(TAG_MAIN, "Door sensor not configured. Please restart device and configure it");
-        vTaskDelay(pdMS_TO_TICKS(2000));
+    switch(get_status_registered()) {
+    case 0:
+        ESP_LOGW(TAG_MAIN, "Door sensor is not configured. Please restart device and configure it");
+        while(1) {
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        }
+    break;
+    case 1:
+        ESP_LOGW(TAG_MAIN, "Registration door sensor");
+
+        if(send_message(dest_mac, build_request_cmd_sensor_msg(ADD, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery()))) {
+            for(uint8_t num_flash = 0; num_flash <= 3; num_flash++) {
+                gpio_set_level(LED_ON_BOARD, 0);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                gpio_set_level(LED_ON_BOARD, 1);
+                vTaskDelay(pdMS_TO_TICKS(500));
+            }
+            set_status_registered(3);
+        }
+
+    break;
+    case 2:
+        ESP_LOGW(TAG_MAIN, "Deregistration door sensor");
+
+        if(send_message(dest_mac, build_request_cmd_sensor_msg(DEL, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery()))) {
+            for(uint8_t num_flash = 0; num_flash <= 3; num_flash++) {
+                gpio_set_level(LED_ON_BOARD, 0);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                gpio_set_level(LED_ON_BOARD, 1);
+                vTaskDelay(pdMS_TO_TICKS(500));
+            }
+            set_status_registered(3);
+        }
+    break;
+    case 3:
+        ESP_LOGI(TAG_MAIN, "Normal mode");
+    break;
+
     }
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
