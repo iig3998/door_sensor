@@ -43,7 +43,7 @@
 #define DATA_RECEIVED         (1 << 1)
 #define WAKEUP_TIME           10   // seconds
 
-#define DEVICE_NAME_SIZE      15
+
 #define MAC_SIZE              6
 
 EventGroupHandle_t xEventGroupDoorSensor;
@@ -53,7 +53,6 @@ uint8_t src_mac[6] = {0, 0, 0, 0, 0, 0};
 
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
-RTC_DATA_ATTR bool battery_state = false;
 
 #ifdef RECEIVE_CALLBACK_FUNCTION
 /* Receive callback function */
