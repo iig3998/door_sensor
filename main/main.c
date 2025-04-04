@@ -12,11 +12,6 @@
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 
-//#include "esp_adc/adc_oneshot.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
-
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
