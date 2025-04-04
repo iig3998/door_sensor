@@ -5,9 +5,11 @@
 
 #include "esp_err.h"
 
-#define NVS_MGMT_MAJOR 0
-#define NVS_MGMT_MINOR 1
-#define NVS_MGMT_PATCH 0
+#define MAJOR_NVS_MGMT_VER 0
+#define MINOR_NVS_MGMT_VER 1
+#define PATCH_NVS_MGMT_VER 0
+
+void print_nvs_mgmt_version();
 
 esp_err_t init_nvs();
 

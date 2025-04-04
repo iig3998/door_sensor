@@ -6,6 +6,14 @@
 
 #define TAG_NVS_MGMT "NVS_MGMT"
 
+/* Print version library */
+void print_nvs_mgmt_version() {
+
+    ESP_LOGI(TAG_NVS_MGMT, "Sensor version: %u.%u.%u", MAJOR_NVS_MGMT_VER, MINOR_NVS_MGMT_VER, PATCH_NVS_MGMT_VER);
+
+    return;
+}
+
 /* Init nvs flash */
 esp_err_t init_nvs() {
 
