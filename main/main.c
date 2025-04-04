@@ -20,6 +20,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "adc.h"
 #include "nvs_mgmt.h"
 #include "wifi.h"
 #include "sensor.h"
@@ -27,16 +28,13 @@
 
 #define GPIO_WAKEUP_PIN       GPIO_NUM_25 //RTC_GPIO6
 #define LED_ON_BOARD          GPIO_NUM_5
-#define NUM_SAMPLES           64
 #define DEBOUNCE_COUNTER      50
-#define DEFAULT_VREF          1100
 #define TAG_MAIN              "DOOR_SENSOR"
 
 #define NUMBER_ATTEMPTS       3
 
 #define ESPNOW_WIFI_CHANNEL   7
 #define RETRASMISSION_TIME_MS 50
-#define VREF_STATE_BATTERY    3.6
 #define DATA_SENT_SUCCESS     (1 << 0)
 #define DATA_SENT_FAILED      (1 << 1)
 
@@ -134,36 +132,6 @@ static bool send_message(uint8_t dest_mac[], node_sensor_msg_t msg) {
         return false;
 
     return true;
-}
-/* Check usb connection */
-static bool check_usb_connection() {
-
-    int32_t adc_raw;
-    float v_batt;
-
-    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC2_CHANNEL_0, ADC_ATTEN_DB_12);
-
-    esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
-
-    adc_raw = 0;
-    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
-        adc_raw += adc1_get_raw(ADC2_CHANNEL_0);
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-
-    adc_raw = adc_raw / NUM_SAMPLES;
-
-    v_batt = esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / 0.6875;
-
-    ESP_LOGI(TAG_MAIN, "USB voltage: %.2f V", v_batt);
-
-    if (v_batt > 3.5)
-        return true;
-
-    return false;
 }
 
 /* GPIO debounce filter */
@@ -265,34 +233,22 @@ inline static esp_err_t start_configuration() {
     return ESP_OK;
 }
 
-static bool read_status_battery() {
 
-    int32_t adc_raw;
-    float v_batt;
 
-    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    gpio_set_level(LED_ON_BOARD, 1);
 
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_12);
 
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
+esp_err_t init_transmission() {
 
-    adc_raw = 0;
-    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
-        adc_raw += adc1_get_raw(ADC1_CHANNEL_7);
-        vTaskDelay(pdMS_TO_TICKS(2));
     }
 
-    adc_raw = adc_raw / NUM_SAMPLES;
+    /* Init espnow */
 
-    v_batt = (esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / 1000.0) * 2;
+    /* Add peer to list */
 
-    ESP_LOGI(TAG_MAIN, "Battery voltage: %.2f V", v_batt);
+    memcpy(peer.peer_addr, dest_mac, MAC_SIZE);
 
-    if (v_batt < VREF_STATE_BATTERY)
-        return false;
 
-    return true;
 }
 
 /* Pre app main program */
