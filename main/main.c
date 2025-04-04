@@ -272,8 +272,24 @@ __attribute__((constructor)) void pre_app_main() {
         esp_restart();
     }
 
-    /* Init gpio */
-    init_gpio();
+    /* Isolate alls GPIOs unused */
+    rtc_gpio_isolate(GPIO_NUM_0);
+
+    rtc_gpio_isolate(GPIO_NUM_12);
+    rtc_gpio_isolate(GPIO_NUM_13);
+    rtc_gpio_isolate(GPIO_NUM_14);
+
+    rtc_gpio_isolate(GPIO_NUM_26);
+    rtc_gpio_isolate(GPIO_NUM_27);
+
+    rtc_gpio_isolate(GPIO_NUM_32);
+    rtc_gpio_isolate(GPIO_NUM_33);
+    rtc_gpio_isolate(GPIO_NUM_34);
+    rtc_gpio_isolate(GPIO_NUM_35);
+    rtc_gpio_isolate(GPIO_NUM_36);
+    rtc_gpio_isolate(GPIO_NUM_37);
+    rtc_gpio_isolate(GPIO_NUM_38);
+    rtc_gpio_isolate(GPIO_NUM_39);
 
     assert(rtc_gpio_is_valid_gpio(GPIO_WAKEUP_PIN) == true);
 
