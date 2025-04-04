@@ -34,8 +34,7 @@
 #define DATA_SENT_FAILED      (1 << 1)
 
 #define DATA_RECEIVED         (1 << 1)
-#define WAKEUP_TIME           10   // seconds
-
+#define WAKEUP_TIME           10
 
 #define MAC_SIZE              6
 
@@ -131,7 +130,7 @@ static bool send_message(uint8_t dest_mac[], node_sensor_msg_t msg) {
 }
 
 /* GPIO debounce filter */
-void gpio_debounce_filter(gpio_num_t gpio) {
+static void gpio_debounce_filter(gpio_num_t gpio) {
 
     uint8_t counter = DEBOUNCE_COUNTER;
 
@@ -148,80 +147,28 @@ void gpio_debounce_filter(gpio_num_t gpio) {
     return;
 }
 
-/* Init GPIOs */
-inline static void init_gpio() {
-
-    /* Isolate alls GPIOs */
-    rtc_gpio_isolate(GPIO_NUM_0);
-
-    rtc_gpio_isolate(GPIO_NUM_12);
-    rtc_gpio_isolate(GPIO_NUM_13);
-    rtc_gpio_isolate(GPIO_NUM_14);
-    
-    rtc_gpio_isolate(GPIO_NUM_26);
-    rtc_gpio_isolate(GPIO_NUM_27);
-
-    rtc_gpio_isolate(GPIO_NUM_32);
-    rtc_gpio_isolate(GPIO_NUM_33);
-    rtc_gpio_isolate(GPIO_NUM_34);
-    rtc_gpio_isolate(GPIO_NUM_35);
-    rtc_gpio_isolate(GPIO_NUM_36);
-    rtc_gpio_isolate(GPIO_NUM_37);
-    rtc_gpio_isolate(GPIO_NUM_38);
-    rtc_gpio_isolate(GPIO_NUM_39);
-
-    return;
-}
-
-inline static void set_wakeup_source() {
-
-    uint8_t counter = 0;
-
-    /* Enable wakeup from GPIO 25 (RTC_GPIO6) */
-    esp_sleep_enable_gpio_wakeup();
-
-    if ((counter == 0) && (new_state == 0)) {
-        ESP_LOGI(TAG_MAIN, "Door open");
-        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
-    } else if ((counter == 0) && (new_state == 1)) {
-        ESP_LOGI(TAG_MAIN, "Door close");
-        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_LOW_LEVEL));
-    }
-
-    /* Enable timer wakeup every WAKEUP_TIME seconds */
-    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(WAKEUP_TIME * 1000000));
-
-    return;
-}
-
 /* Start configuration device */
-inline static esp_err_t start_configuration() {
+inline static esp_err_t start_configuration(httpd_handle_t server) {
 
     if(check_usb_connection()) {
 
         esp_err_t err = ESP_FAIL;
-        httpd_handle_t server = NULL;
-
-        gpio_set_level(LED_ON_BOARD, 0);
 
         ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
 
-        wifi_init_softap();
+        err = wifi_init_softap();
+        if (err != ESP_OK)
+            return err;
         
         err = start_webserver(server);
-        if (err != ESP_OK) {
+        if (err != ESP_OK)
             return err;
+
+        gpio_set_level(LED_ON_BOARD, 0);
+
+        while(1) {
+            vTaskDelay(pdMS_TO_TICKS(500));
         }
-
-        while(!get_conf()) {
-            vTaskDelay(pdMS_TO_TICKS(200));
-        }
-
-        stop_webserver(server);
-
-        ESP_LOGI(TAG_MAIN, "Exit from configuration mode");
-
-        gpio_set_level(LED_ON_BOARD, 1);
 
         return err;
     }
@@ -229,22 +176,66 @@ inline static esp_err_t start_configuration() {
     return ESP_OK;
 }
 
+inline static void stop_configuration(httpd_handle_t server) {
 
+    stop_webserver(server);
+
+    ESP_LOGI(TAG_MAIN, "Exit from configuration mode");
 
     gpio_set_level(LED_ON_BOARD, 1);
 
+    return;
+}
 
 esp_err_t init_transmission() {
 
+    esp_err_t err = ESP_FAIL;
+    esp_now_peer_info_t peer;
+
+    /* Init WiFi station */
+    err = init_wifi_sta();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, WiFi not configurated");
+        esp_restart();
     }
 
     /* Init espnow */
+    err = esp_now_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, ESPNOW not inited");
+        esp_restart();
+    }
 
     /* Add peer to list */
+    memset(&peer, 0, sizeof(esp_now_peer_info_t));
+    peer.channel = ESPNOW_WIFI_CHANNEL;
+    peer.ifidx = WIFI_IF_STA;
+    peer.encrypt = false;
 
     memcpy(peer.peer_addr, dest_mac, MAC_SIZE);
+    err = esp_now_add_peer(&peer);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, peer not add");
+        esp_restart();
+    }
 
+    /* Register send callback function */
+    err = esp_now_register_send_cb(espnow_send_cb);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
+        esp_restart();
+    }
 
+    #ifdef RECEIVE_CALLBACK_FUNCTION
+    err = esp_now_register_recv_cb(espnow_recv_cb);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
+        esp_restart();
+    }
+    xEventGroupClearBits(xEventGroupDoorSensor, DATA_RECEIVED);
+    #endif
+
+    return err;
 }
 
 /* Pre app main program */
@@ -316,11 +307,9 @@ __attribute__((constructor)) void pre_app_main() {
 void app_main() {
 
     esp_err_t err = ESP_FAIL;
-    uint8_t num_tentative = NUMBER_ATTEMPTS;
-    char device_name[DEVICE_NAME_SIZE];
-    EventBits_t uxBits;
+    char device_name[DEVICE_NAME_SIZE] = {'\0'};
     node_sensor_msg_t msg;
-    esp_now_peer_info_t peer;
+    httpd_handle_t server = NULL;
 
     /* Clean message buffer */
     memset(&msg, 0, sizeof(msg));
@@ -346,16 +335,17 @@ void app_main() {
     }
 
     /* Configure device */
-    err = start_configuration();
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG_MAIN, "Door sensor is configured. Remove USB cable and restart device");
-        while(1) {
-            vTaskDelay(pdMS_TO_TICKS(2000));
-        }
-    } else {
-        ESP_LOGE(TAG_MAIN, "Error, event loop not init");
+    err = start_configuration(server);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, configuration mode not started");
         esp_restart();
+        return;
     }
+
+    init_transmission();
+
+    gpio_debounce_filter(GPIO_WAKEUP_PIN);
+    get_device_name(device_name, DEVICE_NAME_SIZE);
 
     /* Check status configuration */
     switch(get_status_registered()) {
@@ -401,90 +391,32 @@ void app_main() {
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_TIMER:
-            ESP_LOGI(TAG_MAIN, "Wakeup from timer");
-
-            get_device_name(device_name, sizeof(device_name));
-            gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
-
-        break;
         case ESP_SLEEP_WAKEUP_GPIO:
-            ESP_LOGI(TAG_MAIN, "Wakeup from GPIO %u", GPIO_WAKEUP_PIN);
+            ESP_LOGI(TAG_MAIN, "Wakeup from timer or GPIO %u", GPIO_WAKEUP_PIN);
 
             get_device_name(device_name, sizeof(device_name));
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
             msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
-
+            send_message(dest_mac, msg);
         break;
         default:
             ESP_LOGW(TAG_MAIN, "Warning, source wakeup unknown. First boot");
-
-            get_device_name(device_name, sizeof(device_name));
-            gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
         break;
     }
 
-    /* Init WiFi station */
-    err = init_wifi_sta();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, WiFi not configurated");
-        esp_restart();
+    /* Enable wakeup from GPIO 25 (RTC_GPIO6) */
+    esp_sleep_enable_gpio_wakeup();
+
+    if (!new_state) {
+        ESP_LOGI(TAG_MAIN, "Door open");
+        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
+    } else if (new_state) {
+        ESP_LOGI(TAG_MAIN, "Door close");
+        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_LOW_LEVEL));
     }
 
-    /* Init espnow */
-    err = esp_now_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, ESPNOW not inited");
-        esp_restart();
-    }
-
-    /* Add peer to list */
-    memset(&peer, 0, sizeof(esp_now_peer_info_t));
-    peer.channel = ESPNOW_WIFI_CHANNEL;
-    peer.ifidx = WIFI_IF_STA;
-    peer.encrypt = false;
-
-    memcpy(peer.peer_addr, dest_mac, MAC_SIZE);
-    err = esp_now_add_peer(&peer);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, peer not add");
-        esp_restart();
-    }
-
-    /* Register send callback function */
-    err = esp_now_register_send_cb(espnow_send_cb);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
-        esp_restart();
-    }
-    
-    #ifdef RECEIVE_CALLBACK_FUNCTION
-    err = esp_now_register_recv_cb(espnow_recv_cb);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
-        esp_restart();
-    }
-    xEventGroupClearBits(xEventGroupDoorSensor, DATA_RECEIVED);
-    #endif
-
-    xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
-    do {
-        /* Send packet */
-        err = esp_now_send(peer.peer_addr, (uint8_t *)&msg, sizeof(msg));
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG_MAIN, "Error, data not sent ... retry");
-            num_tentative = 0;
-        }
-        /* Wait until the data is sent */
-        uxBits = xEventGroupWaitBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED, pdTRUE, pdFALSE, portMAX_DELAY);
-        num_tentative--;
-        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
-    }
-    while((uxBits & DATA_SENT_FAILED) && num_tentative > 0);
-
-    /* Set wakeup source */
-    set_wakeup_source();
+    /* Enable timer wakeup every WAKEUP_TIME seconds */
+    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(WAKEUP_TIME * 1000000));
 
     esp_now_deinit();
 
