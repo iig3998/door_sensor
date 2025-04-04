@@ -3,11 +3,12 @@
 
 #pragma once
 
-#define WIFI_MAJOR 0
-#define WIFI_MINOR 1
-#define WIFI_PATCH 0
+#define MAJOR_WIFI_VER 0
+#define MINOR_WIFI_VER 1
+#define PATCH_WIFI_VER 0
 
 #define TAG_WIFI "WIFI"
+
 #define ESPNOW_CHANNEL 7
 
 /* Print wifi version */

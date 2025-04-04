@@ -11,7 +11,7 @@
 /* Print wifi version */
 void print_wifi_version() {
 
-    ESP_LOGI(TAG_WIFI, "WiFi version: %u.%u.%u", WIFI_MAJOR, WIFI_MINOR, WIFI_PATCH);
+    ESP_LOGI(TAG_WIFI, "WiFi version: %u.%u.%u", MAJOR_WIFI_VER, MINOR_WIFI_VER, PATCH_WIFI_VER);
 
     return;
 }
@@ -37,7 +37,7 @@ esp_err_t init_wifi_sta() {
     }
 
     /* Set wifi mode */
-    err = esp_wifi_set_mode(WIFI_MODE_STA);
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi mode not set");
         return err;
