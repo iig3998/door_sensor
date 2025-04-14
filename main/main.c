@@ -360,56 +360,61 @@ void app_main() {
     }
 
     /* Configure device */
+    #if 0
     err = start_configuration(server);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, configuration mode not started");
         esp_restart();
         return;
     }
+    #endif
 
     init_transmission();
 
     gpio_debounce_filter(GPIO_WAKEUP_PIN);
     get_device_name(device_name, DEVICE_NAME_SIZE);
 
+    status_door_sensor sdr = {
+        .battery_low_detect = check_status_battery(),
+        .state = new_state,
+    };
+
     /* Check status configuration */
-    switch(get_status_registered()) {
-    case 0:
-        ESP_LOGW(TAG_MAIN, "Door sensor is not configured. Please restart device and configure it");
-        while(1) {
+    switch(1) {
+        case UNCONFIGURED_DOOR_SENSOR:
+            ESP_LOGW(TAG_MAIN, "Door sensor is not configured. Please connbect usb cable, restart device and configure it");
+            while(1) {
+                vTaskDelay(pdMS_TO_TICKS(2000));
+            }
+        break;
+        case REGISTRATION_DOOR_SENSOR:
+            while(1) {
+            ESP_LOGI(TAG_MAIN, "Registration door sensor");
+
+            if(send_message(dest_mac, build_cmd_node_msg(ADD, 1, (esp_random() % 256), src_mac, device_name, &sdr))) {
+
+                set_status_registered(3);
+            }
             vTaskDelay(pdMS_TO_TICKS(2000));
         }
-    break;
-    case 1:
-        ESP_LOGW(TAG_MAIN, "Registration door sensor");
 
-        if(send_message(dest_mac, build_request_cmd_sensor_msg(ADD, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery()))) {
-            for(uint8_t num_flash = 0; num_flash <= 3; num_flash++) {
-                gpio_set_level(LED_ON_BOARD, 0);
-                vTaskDelay(pdMS_TO_TICKS(500));
-                gpio_set_level(LED_ON_BOARD, 1);
-                vTaskDelay(pdMS_TO_TICKS(500));
+        break;
+        case DEREGISTRATION_DOOR_SENSOR:
+            ESP_LOGI(TAG_MAIN, "Deregistration door sensor");
+
+            if(send_message(dest_mac, build_cmd_node_msg(DEL, get_device_id(), (esp_random() % 256), src_mac, device_name, &sdr))) {
+                for(uint8_t num_flash = 0; num_flash <= 3; num_flash++) {
+                    gpio_set_level(LED_ON_BOARD, 0);
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    gpio_set_level(LED_ON_BOARD, 1);
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                }
+                set_status_registered(3);
             }
-            set_status_registered(3);
-        }
-
-    break;
-    case 2:
-        ESP_LOGW(TAG_MAIN, "Deregistration door sensor");
-
-        if(send_message(dest_mac, build_request_cmd_sensor_msg(DEL, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery()))) {
-            for(uint8_t num_flash = 0; num_flash <= 3; num_flash++) {
-                gpio_set_level(LED_ON_BOARD, 0);
-                vTaskDelay(pdMS_TO_TICKS(500));
-                gpio_set_level(LED_ON_BOARD, 1);
-                vTaskDelay(pdMS_TO_TICKS(500));
-            }
-            set_status_registered(3);
-        }
-    break;
-    case 3:
-        ESP_LOGI(TAG_MAIN, "Normal mode");
-    break;
+        break;
+        case NORMAL_MODE_DOOR_SENSOR:
+            ESP_LOGI(TAG_MAIN, "Normal mode");
+        break;
 
     }
 
