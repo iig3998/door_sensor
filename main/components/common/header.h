@@ -16,11 +16,6 @@ enum node_type {
 	GATEWAY
 };
 
-enum msg_type {
-	REQUEST = 0,
-	RESPONSE
-};
-
 enum cmd_type {
 	ADD = 0,
 	DEL,
@@ -32,21 +27,20 @@ enum cmd_type {
 	NACK
 };
 
-/* Header struct 
-+---------------+--------------+-------------+--------------+--------------+
-| node (1 byte) | msg (1 byte) | id (1 byte) | mac (6 byte) | cmd (1 byte) |
-+---------------+--------------+-------------+--------------+--------------+
+/* Header struct
++--------------------+-----------------+------------------+--------------+--------------+
+| node_type (1 byte) | id_msg (1 byte) | id_node (1 byte) | mac (6 byte) | cmd (1 byte) |
++--------------------+-----------------+------------------+--------------+--------------+
 */
 
 typedef struct {
 	enum node_type node;
-	enum msg_type msg;
 	uint8_t id_node;
 	uint8_t id_msg;
 	uint8_t mac[MAC_SIZE];
 	enum cmd_type cmd;
 } __attribute__((__packed__)) node_id_header;
 
-node_id_header build_header_msg(enum msg_type msg, enum node_type node, uint8_t id_node, uint8_t id_msg, uint8_t mac[], enum cmd_type cmd);
+node_id_header build_header_msg(enum node_type node, uint8_t id_node, uint8_t id_msg, uint8_t mac[], enum cmd_type cmd);
 
 #endif
