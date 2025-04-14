@@ -9,6 +9,7 @@
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "nvs_mgmt.h"
+#include "mdns.h"
 #include "web_server.h"
 
 const char html_page[] = R"rawliteral(
@@ -325,6 +326,7 @@ static httpd_uri_t delete_data = {
 esp_err_t wifi_init_softap() {
 
     esp_err_t err = ESP_FAIL;
+    uint8_t src_mac[6] = {0};
 
     esp_netif_create_default_wifi_ap();
 
@@ -343,14 +345,24 @@ esp_err_t wifi_init_softap() {
         return err;
     }
 
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = WIFI_SSID,
-            .ssid_len = strlen(WIFI_SSID),
-            .max_connection = MAX_STA_CONN,
-            .authmode = WIFI_AUTH_OPEN
-        },
-    };
+    /* Read MAC address */
+    err = esp_read_mac(src_mac, ESP_MAC_WIFI_STA);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_WEBSERVER, "Error, MAC address not read");
+        esp_restart();
+    }
+
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
+
+    snprintf((char *)wifi_config.ap.ssid, strlen("DOOR_SENSOR") + 8, "%s_%s", "DOOR_SENSOR", src_mac);
+    wifi_config.ap.ssid_len = strlen((char *)wifi_config.ap.ssid);
+    wifi_config.ap.max_connection = MAX_STA_CONN;
+    wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+
+    ESP_ERROR_CHECK(mdns_init());
+    ESP_ERROR_CHECK(mdns_hostname_set((char *)wifi_config.ap.ssid));
+    ESP_ERROR_CHECK(mdns_instance_name_set("Web Server"));
 
     err = esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config);
     if (err != ESP_OK) {
