@@ -51,6 +51,11 @@ uint8_t src_mac[6] = {0, 0, 0, 0, 0, 0};
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
 
+typedef struct {
+    bool state;
+    bool battery_low_detect;
+} __attribute__((__packed__)) status_door_sensor;
+
 #ifdef RECEIVE_CALLBACK_FUNCTION
 /* Receive callback function */
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
