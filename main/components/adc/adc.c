@@ -1,5 +1,8 @@
 
+#include <string.h>
+
 #include "esp_log.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -13,64 +16,55 @@
 #define NUM_SAMPLES        64
 #define VREF_STATE_BATTERY 3.5
 
-/* Read voltage from adc */
-static float read_adc_voltage(uint8_t adc, uint8_t adc_channel, float coeff) {
+/* Read voltage from adc1 channel */
+static float read_adc_voltage(adc1_channel_t adc_channel) {
 
-    int32_t adc_raw;
-    float v_batt;
+    uint32_t voltage_mv = 0;
+    uint32_t one_voltage_read = 0;
 
-    esp_adc_cal_characteristics_t *adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    if(!adc_chars) {
-        ESP_LOGE(TAG_ADC, "Error, memory not allocated for adc");
-        return -1;
-    }
-
-    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_width(ADC_WIDTH_BIT_10);
     adc1_config_channel_atten(adc_channel, ADC_ATTEN_DB_12);
 
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
+    esp_adc_cal_characteristics_t adc_cal_characteristics;
+    memset(&adc_cal_characteristics, 0, sizeof(adc_cal_characteristics));
 
-    adc_raw = 0;
-    for(uint8_t i = 0; i < NUM_SAMPLES; i++) {
-        adc_raw += adc1_get_raw(adc);
-        vTaskDelay(pdMS_TO_TICKS(2));
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_10, DEFAULT_VREF, &adc_cal_characteristics);
+
+    for (int i = 0; i < NUM_SAMPLES; i++) {
+        esp_adc_cal_get_voltage(adc_channel, &adc_cal_characteristics, &one_voltage_read);
+        voltage_mv += one_voltage_read;
     }
+    voltage_mv = (voltage_mv / NUM_SAMPLES);
 
-    adc_raw = adc_raw / NUM_SAMPLES;
+    ESP_LOGI(TAG_ADC, "Voltage: %ld", voltage_mv);
 
-    v_batt = esp_adc_cal_raw_to_voltage(adc_raw, adc_chars) / coeff;
-
-    ESP_LOGI(TAG_ADC, "Voltage read: %.2f V", v_batt);
-
-    return v_batt;
+    return voltage_mv;
 }
 
 /* Read voltage battery  */
-bool read_status_battery() {
+bool check_status_battery() {
 
-    float v_batt;
+    float voltage = 0;
 
-    v_batt = read_adc_voltage( ADC_UNIT_1,  ADC1_CHANNEL_7, 500.0);
+    voltage = read_adc_voltage(ADC_CHANNEL_7) / 1000.0 * 2;
 
-    if (v_batt > VREF_STATE_BATTERY)
-        return true;
+    if (voltage <= VREF_STATE_BATTERY)
+        return false;
 
-    return false;
+    return true;
 }
 
 /* Check usb connection */
 bool check_usb_connection() {
 
-    float v_batt;
+    float voltage = 0;
 
-    v_batt = read_adc_voltage(ADC_UNIT_2, ADC2_CHANNEL_0, 0.6875);
+    voltage = read_adc_voltage(ADC_CHANNEL_4) / 1000.0;
 
-    ESP_LOGI(TAG_ADC, "USB voltage: %.2f V", v_batt);
+    if (voltage <= 3.0)
+        return false;
 
-    if (v_batt > VREF_STATE_BATTERY)
-        return true;
-
-    return false;
+    return true;
 }
 
 

@@ -5,6 +5,6 @@
 
 bool check_usb_connection();
 
-bool read_status_battery();
+bool check_status_battery();
 
 #endif
