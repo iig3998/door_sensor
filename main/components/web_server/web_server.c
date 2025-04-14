@@ -22,10 +22,12 @@ const char html_page[] = R"rawliteral(
             body {
                 font-family: Arial, sans-serif;
                 text-align: center;
-                margin: 20px;
+                margin: 0;
+                padding: 0;
                 background: linear-gradient(to right, #6dd5ed, #2193b0);
                 color: black;
-                min-height: 100vh;
+                height: 100vh;
+                overflow: hidden;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -60,10 +62,10 @@ const char html_page[] = R"rawliteral(
         .button-container {
             display: flex;
             justify-content: space-between;
-            margin-top: 45px;
+            margin-top: 60px;
         }
         button {
-            padding: 14px 20px;
+            padding: 15px 28px;
             border: none;
             border-radius: 6px;
             background: #ff9800;
@@ -113,7 +115,7 @@ const char html_page[] = R"rawliteral(
         <div class="button-container">
             <button onclick="salvaDati()">Configura</button>
             <button onclick="cancellaDati()">Reset</button>
-            <button onclick="cancellaRegistrazione()">Cancella configurazione</button>
+            <button onclick="cancellaRegistrazione()">Cancella<br>configurazione</button>
         </div>
     </div>
 
