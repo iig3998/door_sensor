@@ -21,22 +21,27 @@
 #include "sensor.h"
 #include "web_server.h"
 
-#define GPIO_WAKEUP_PIN       GPIO_NUM_25
-#define LED_ON_BOARD          GPIO_NUM_5
-#define DEBOUNCE_COUNTER      50
-#define TAG_MAIN              "DOOR_SENSOR"
+#define GPIO_WAKEUP_PIN            GPIO_NUM_25
+#define LED_ON_BOARD               GPIO_NUM_5
+#define DEBOUNCE_COUNTER           50
+#define NUM_FLASH                  3
+#define NUMBER_ATTEMPTS            3
+#define TAG_MAIN                   "DOOR_SENSOR"
 
-#define NUMBER_ATTEMPTS       3
+#define ESPNOW_WIFI_CHANNEL        7
+#define RETRASMISSION_TIME_MS      50
+#define DATA_SENT_SUCCESS          (1 << 0)
+#define DATA_SENT_FAILED           (1 << 1)
 
-#define ESPNOW_WIFI_CHANNEL   7
-#define RETRASMISSION_TIME_MS 50
-#define DATA_SENT_SUCCESS     (1 << 0)
-#define DATA_SENT_FAILED      (1 << 1)
+#define DATA_RECEIVED              (1 << 1)
+#define WAKEUP_TIME                10
 
-#define DATA_RECEIVED         (1 << 1)
-#define WAKEUP_TIME           10
+#define MAC_SIZE                   6
 
-#define MAC_SIZE              6
+#define UNCONFIGURED_DOOR_SENSOR   0
+#define REGISTRATION_DOOR_SENSOR   1
+#define DEREGISTRATION_DOOR_SENSOR 2
+#define NORMAL_MODE_DOOR_SENSOR    3
 
 EventGroupHandle_t xEventGroupDoorSensor;
 
