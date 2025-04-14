@@ -313,6 +313,18 @@ __attribute__((constructor)) void pre_app_main() {
     return;
 }
 
+static void flash_led() {
+
+    for(uint8_t num_flash = 0; num_flash <= NUM_FLASH; num_flash++) {
+        gpio_set_level(LED_ON_BOARD, 0);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        gpio_set_level(LED_ON_BOARD, 1);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
+    return;
+}
+
 /* Main program */
 void app_main() {
 
