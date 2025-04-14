@@ -305,6 +305,8 @@ __attribute__((constructor)) void pre_app_main() {
         .pull_up_en = GPIO_PULLUP_DISABLE,
     };
 
+    /* Power off led */
+    gpio_set_level(LED_ON_BOARD, 1);
     ESP_ERROR_CHECK(gpio_config(&config_led));
 
     /* Hold on GPIO 25 */
