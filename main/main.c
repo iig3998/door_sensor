@@ -45,8 +45,8 @@
 
 EventGroupHandle_t xEventGroupDoorSensor;
 
-uint8_t dest_mac[6] = {0x78, 0x42, 0x1C, 0x6A, 0xEF, 0x94};
-uint8_t src_mac[6] = {0, 0, 0, 0, 0, 0};
+uint8_t dest_mac[MAC_SIZE] = {0x78, 0x42, 0x1C, 0x6A, 0xEF, 0x94};
+uint8_t src_mac[MAC_SIZE] = {0, 0, 0, 0, 0, 0};
 
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
