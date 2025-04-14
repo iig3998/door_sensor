@@ -18,7 +18,7 @@
 #include "adc.h"
 #include "nvs_mgmt.h"
 #include "wifi.h"
-#include "sensor.h"
+#include "node.h"
 #include "web_server.h"
 
 #define GPIO_WAKEUP_PIN            GPIO_NUM_25
@@ -62,7 +62,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
     ESP_LOGI(TAG_MAIN, "Receive callback function");
 
-    node_sensor_msg_t resp;
+    node_msg_t resp;
     ESP_LOGI(TAG_MAIN, "Receive message from %X:%X:%X:%X:%X:%X", recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2], recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
 
     if (!recv_info->src_addr || !data || len <= 0) {
@@ -70,7 +70,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
         return;
     }
 
-    memcpy(&resp, (node_sensor_msg_t *)data, sizeof(node_sensor_msg_t));
+    memcpy(&resp, (node_msg_t *)data, sizeof(node_msg_t));
     switch(resp.header.cmd) {
         case NACK:
             ESP_LOGE(TAG_MAIN, "Error, message not received correctly from gateway");
@@ -112,7 +112,7 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
 }
 
 /* Send message by espnow protocol */
-static bool send_message(uint8_t dest_mac[], node_sensor_msg_t msg) {
+static bool send_message(uint8_t dest_mac[], node_msg_t msg) {
 
     esp_err_t err = ESP_FAIL;
     uint8_t num_tentative = NUMBER_ATTEMPTS;
@@ -317,12 +317,13 @@ __attribute__((constructor)) void pre_app_main() {
 void app_main() {
 
     esp_err_t err = ESP_FAIL;
-    char device_name[DEVICE_NAME_SIZE] = {'\0'};
-    node_sensor_msg_t msg;
+    char device_name[DEVICE_NAME_SIZE];
+    node_msg_t msg;
     httpd_handle_t server = NULL;
 
     /* Clean message buffer */
     memset(&msg, 0, sizeof(msg));
+    memset(device_name, '\0', sizeof(device_name));
 
     /* Init NVS flash */
     err = init_nvs();
@@ -406,7 +407,7 @@ void app_main() {
 
             get_device_name(device_name, sizeof(device_name));
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            msg = build_request_cmd_sensor_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, new_state, read_status_battery());
+            msg = build_cmd_node_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, &sdr);
             send_message(dest_mac, msg);
         break;
         default:
