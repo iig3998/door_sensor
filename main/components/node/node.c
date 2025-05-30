@@ -78,6 +78,8 @@ struct node_list_t *add_node_to_list(struct node_list_t *p, node_msg_t pn) {
 
     px->node.id_node = pn.header.id_node;
     memcpy(px->node.mac, pn.header.mac, MAC_SIZE);
+    memset(px->node.name_node, '\0', NAME_LEN);
+    strncpy(px->node.name_node, pn.name_node, strlen(pn.name_node));
 
     px->next = NULL;
 
@@ -153,29 +155,50 @@ uint8_t get_num_node_from_list() {
     return counter_node;
 }
 
-node_msg_t build_cmd_node_msg(enum cmd_type cmd, uint8_t id_node, uint8_t id_msg, uint8_t mac[], const char* name_node, void *payload) {
+/* Build node msg */
+node_msg_t build_node_msg(cmd_type cmd, uint8_t id_node, node_type node, uint8_t id_msg, uint8_t mac[], const char *name_node, void *payload) {
 
     node_msg_t msg;
+
+    memset(&msg, 0, sizeof(msg));
 
     msg.header.cmd = cmd;
     msg.header.id_node = id_node;
     msg.header.id_msg = id_msg;
+    msg.header.node = node;
+
+    /* Set mac address */
     memcpy(msg.header.mac, mac, MAC_SIZE);
 
-    msg.header.node = SENSOR;
+    /* Set name node */
+    memset(msg.name_node, '\0', NAME_LEN);
+    memcpy(msg.name_node, name_node, strlen(name_node));
 
-    memcpy(msg.name_node, name_node, 15);
+    /* Set payload */
+    if(payload) {
+        memset(msg.payload, 0, PAYLOAD_LEN);
+        memcpy(msg.payload, payload, sizeof(status_node));
+        ESP_LOGI(TAG_NODE, "State: %u", msg.payload[0]);
+        ESP_LOGI(TAG_NODE, "Battery low detect: %u", msg.payload[1]);
 
-    if(!payload) {
-        msg.payload = payload;
+        ESP_LOGI(TAG_NODE, "status_node size: %u", sizeof(status_node));
+        ESP_LOGI(TAG_NODE, "a: %u", msg.payload[2]);
+        ESP_LOGI(TAG_NODE, "b: %u", msg.payload[3]);
+        ESP_LOGI(TAG_NODE, "c: %u", msg.payload[4]);
+        ESP_LOGI(TAG_NODE, "d: %u", msg.payload[5]);
+        ESP_LOGI(TAG_NODE, "e: %u", msg.payload[6]);
+        ESP_LOGI(TAG_NODE, "f: %u", msg.payload[7]);
     }
 
-    msg.crc = calc_crc16((uint8_t *)&msg, sizeof(msg) - sizeof(msg.crc));
+    msg.crc = calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(msg.crc));
 
-    ESP_LOGI(TAG_NODE, "Cmd: %u", cmd);
-    ESP_LOGI(TAG_NODE, "ID node: %u", id_node);
-    ESP_LOGI(TAG_NODE, "ID msg: %u", id_msg);
+    ESP_LOGI(TAG_NODE, "Cmd: %u", msg.header.cmd);
+    ESP_LOGI(TAG_NODE, "ID node: %u", msg.header.id_node);
+    ESP_LOGI(TAG_NODE, "ID msg: %u", msg.header.id_msg);
     ESP_LOGI(TAG_NODE, "Name: %s", msg.name_node);
+    ESP_LOGI(TAG_NODE, "Mac: %02X:%02X:%02X:%02X:%02X:%02X",
+        msg.header.mac[0], msg.header.mac[1], msg.header.mac[2],
+        msg.header.mac[3], msg.header.mac[4], msg.header.mac[5]);
     ESP_LOGI(TAG_NODE, "CRC16: %u", msg.crc);
 
     return msg;

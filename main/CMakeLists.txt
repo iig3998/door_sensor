@@ -1,5 +1,4 @@
 idf_component_register(SRCS "main.c"
-					SRCS "components/common/header.c"
 					SRCS "components/common/common.c"
 					SRCS "components/node/node.c"
 					SRCS "components/wifi/wifi.c"
