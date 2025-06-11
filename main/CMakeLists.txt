@@ -5,11 +5,13 @@ idf_component_register(SRCS "main.c"
 					SRCS "components/web_server/web_server.c"
 					SRCS "components/nvs_mgmt/nvs_mgmt.c"
 					SRCS "components/adc/adc.c"
+					SRCS "components/rtc/rtc.c"
 					INCLUDE_DIRS "components/common"
 					INCLUDE_DIRS "components/node"
 					INCLUDE_DIRS "components/wifi"
 					INCLUDE_DIRS "components/web_server"
 					INCLUDE_DIRS "components/nvs_mgmt"
 					INCLUDE_DIRS "components/adc"
+					INCLUDE_DIRS "components/rtc"
 					PRIV_REQUIRES esp_http_server
                     REQUIRES driver soc nvs_flash esp_timer esp_wifi esp_http_client esp_adc mdns)
