@@ -1,6 +1,7 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "esp_log.h"
 #include "common.h"
@@ -8,151 +9,12 @@
 
 #define TAG_NODE "NODE"
 
-static uint8_t counter_node = 0;
-
 /* Print version library */
 void print_node_version() {
 
     ESP_LOGI(TAG_NODE, "Node version: %u.%u.%u", MAJOR_NODE_VER, MINOR_NODE_VER, PATCH_NODE_VER);
 
     return;
-}
-
-/* Return tail node list */
-static struct node_list_t *get_tail_node_list(struct node_list_t *p) {
-
-    if(!p)
-        return p;
-
-    while(p->next) {
-        p = p->next;
-    }
-
-    return p;
-}
-
-/* Return head node list */
-static struct node_list_t *get_head_node_list(struct node_list_t *p) {
-
-    if(!p)
-        return p;
-
-    while(p->prev) {
-        p = p->prev;
-    }
-
-    return p;
-}
-
-/* Return node from list */
-struct node_list_t *get_node_from_list(struct node_list_t *p, uint8_t id) {
-
-    p = get_head_node_list(p);
-    if (!p)
-        return NULL;
-
-    do {
-        if(p->node.id_node == id) {
-            return p;
-        }
-
-        p = p->next;
-
-    } while(p->next != NULL);
-
-    if(p->node.id_node == id) {
-        return p;
-    }
-
-    return NULL;
-}
-
-/* Add node to list */
-struct node_list_t *add_node_to_list(struct node_list_t *p, node_msg_t pn) {
-
-    p = get_tail_node_list(p);
-
-    struct node_list_t *px = (struct node_list_t *)calloc(1, sizeof(struct node_list_t));
-    if(!px)
-        return NULL;
-
-    px->node.id_node = pn.header.id_node;
-    memcpy(px->node.mac, pn.header.mac, MAC_SIZE);
-    memset(px->node.name_node, '\0', NAME_LEN);
-    strncpy(px->node.name_node, pn.name_node, strlen(pn.name_node));
-
-    px->next = NULL;
-
-    if(!p){
-        px->prev = NULL;
-    } else {
-        px->prev = p;
-        p->next = px;
-    }
-
-    p = px;
-    counter_node++;
-
-    return p;
-}
-
-/* Delete node from list */
-struct node_list_t *del_node_from_list(struct node_list_t *p, uint8_t id) {
-
-    struct node_list_t *p1 = NULL;
-    struct node_list_t *p2 = NULL;
-    struct node_list_t *p0 = NULL;
-
-    p0 = get_node_from_list(p, id);
-    if(!p0) {
-        return p;
-    }
-
-    if(p0->prev)
-        p1 = p0->prev;
-
-    if(p0->next)
-        p2 = p0->next;
-
-    if(p1 && !p2)
-        p1->next = NULL;
-
-    if(!p1 && p2)
-        p2->prev = NULL;
-
-    if (p1 && p2) {
-        p1->next = p2;
-        p2->prev = p1;
-    }
-
-    free(p0);
-
-    counter_node--;
-
-    if(p2)
-        return get_tail_node_list(p2);
-    else if(p1)
-        return get_tail_node_list(p1);
-
-    return NULL;
-}
-
-/* Update node */
-struct node_list_t *update_node_to_list(struct node_list_t *p, node_msg_t pn) {
-
-    p = get_node_from_list(p, pn.header.id_node);
-    if (!p)
-        return p;
-
-    memcpy(p, &pn, sizeof(pn));
-
-    return p;
-}
-
-/* Return number of node inside list */
-uint8_t get_num_node_from_list() {
-
-    return counter_node;
 }
 
 /* Build node msg */
@@ -175,19 +37,15 @@ node_msg_t build_node_msg(cmd_type cmd, uint8_t id_node, node_type node, uint8_t
     memcpy(msg.name_node, name_node, strlen(name_node));
 
     /* Set payload */
-    if(payload) {
-        memset(msg.payload, 0, PAYLOAD_LEN);
-        memcpy(msg.payload, payload, sizeof(status_node));
-        ESP_LOGI(TAG_NODE, "State: %u", msg.payload[0]);
-        ESP_LOGI(TAG_NODE, "Battery low detect: %u", msg.payload[1]);
-
-        ESP_LOGI(TAG_NODE, "status_node size: %u", sizeof(status_node));
-        ESP_LOGI(TAG_NODE, "a: %u", msg.payload[2]);
-        ESP_LOGI(TAG_NODE, "b: %u", msg.payload[3]);
-        ESP_LOGI(TAG_NODE, "c: %u", msg.payload[4]);
-        ESP_LOGI(TAG_NODE, "d: %u", msg.payload[5]);
-        ESP_LOGI(TAG_NODE, "e: %u", msg.payload[6]);
-        ESP_LOGI(TAG_NODE, "f: %u", msg.payload[7]);
+    memset(msg.payload, 0, PAYLOAD_LEN);
+    if (payload) {
+        if (cmd == ADD) {
+            memcpy(msg.payload, payload, sizeof(time_t));
+        } else {
+            memcpy(msg.payload, payload, sizeof(status_node));
+            ESP_LOGI(TAG_NODE, "State: %u", msg.payload[0]);
+            ESP_LOGI(TAG_NODE, "Battery low detect: %u", msg.payload[1]);
+        }
     }
 
     msg.crc = calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(msg.crc));
@@ -196,9 +54,7 @@ node_msg_t build_node_msg(cmd_type cmd, uint8_t id_node, node_type node, uint8_t
     ESP_LOGI(TAG_NODE, "ID node: %u", msg.header.id_node);
     ESP_LOGI(TAG_NODE, "ID msg: %u", msg.header.id_msg);
     ESP_LOGI(TAG_NODE, "Name: %s", msg.name_node);
-    ESP_LOGI(TAG_NODE, "Mac: %02X:%02X:%02X:%02X:%02X:%02X",
-        msg.header.mac[0], msg.header.mac[1], msg.header.mac[2],
-        msg.header.mac[3], msg.header.mac[4], msg.header.mac[5]);
+    ESP_LOGI(TAG_NODE, "Mac: %02X:%02X:%02X:%02X:%02X:%02X", msg.header.mac[0], msg.header.mac[1], msg.header.mac[2], msg.header.mac[3], msg.header.mac[4], msg.header.mac[5]);
     ESP_LOGI(TAG_NODE, "CRC16: %u", msg.crc);
 
     return msg;
