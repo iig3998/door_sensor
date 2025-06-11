@@ -24,7 +24,6 @@
 #define GPIO_WAKEUP_PIN            GPIO_NUM_25
 #define LED_ON_BOARD               GPIO_NUM_5
 #define DEBOUNCE_COUNTER           50
-#define NUM_FLASH                  3
 #define NUMBER_ATTEMPTS            3
 #define TAG_MAIN                   "DOOR_SENSOR"
 
@@ -33,15 +32,9 @@
 #define DATA_SENT_SUCCESS          (1 << 0)
 #define DATA_SENT_FAILED           (1 << 1)
 
-#define DATA_RECEIVED              (1 << 1)
-#define WAKEUP_TIME                10
 
 #define MAC_SIZE                   6
 
-#define UNCONFIGURED_DOOR_SENSOR   0
-#define REGISTRATION_DOOR_SENSOR   1
-#define DEREGISTRATION_DOOR_SENSOR 2
-#define NORMAL_MODE_DOOR_SENSOR    3
 
 EventGroupHandle_t xEventGroupDoorSensor;
 
@@ -56,7 +49,6 @@ typedef struct {
     bool battery_low_detect;
 } __attribute__((__packed__)) status_door_sensor;
 
-#ifdef RECEIVE_CALLBACK_FUNCTION
 /* Receive callback function */
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
 
@@ -88,7 +80,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
     return;
 }
-#endif
 
 /* Send callback function */
 static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status) {
