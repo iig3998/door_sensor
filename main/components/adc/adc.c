@@ -4,17 +4,25 @@
 #include "esp_log.h"
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 
 #include "adc.h"
 
-#define TAG_ADC            "ADC"
 #define DEFAULT_VREF       1100
 #define NUM_SAMPLES        64
 #define VREF_STATE_BATTERY 3.5
+
+#define TAG_ADC            "ADC"
+
+/* Print adc library version */
+void print_adc_version() {
+
+    ESP_LOGI(TAG_ADC, "Adc version: %u.%u.%u", MAJOR_ADC_VER, MINOR_ADC_VER, PATCH_ADC_VER);
+
+    return;
+}
 
 /* Read voltage from adc1 channel */
 static float read_adc_voltage(adc1_channel_t adc_channel) {
@@ -48,10 +56,11 @@ bool check_status_battery() {
 
     voltage = read_adc_voltage(ADC_CHANNEL_7) / 1000.0 * 2;
 
+    ESP_LOGI(TAG_ADC, "Voltage battery: %f", voltage);
     if (voltage <= VREF_STATE_BATTERY)
-        return false;
+        return true;
 
-    return true;
+    return false;
 }
 
 /* Check usb connection */
@@ -61,10 +70,11 @@ bool check_usb_connection() {
 
     voltage = read_adc_voltage(ADC_CHANNEL_4) / 1000.0;
 
+    ESP_LOGI(TAG_ADC, "Voltage usb connection: %f", voltage);
     if (voltage <= 3.0)
-        return false;
+        return true;
 
-    return true;
+    return false;
 }
 
 
