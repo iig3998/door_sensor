@@ -14,4 +14,4 @@ idf_component_register(SRCS "main.c"
 					INCLUDE_DIRS "components/adc"
 					INCLUDE_DIRS "components/rtc"
 					PRIV_REQUIRES esp_http_server
-                    REQUIRES driver soc nvs_flash esp_timer esp_wifi esp_http_client esp_adc mdns)
+                    REQUIRES driver soc nvs_flash esp_timer esp_wifi esp_http_client esp_adc)
