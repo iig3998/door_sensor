@@ -9,7 +9,6 @@
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "nvs_mgmt.h"
-#include "mdns.h"
 #include "web_server.h"
 
 const char html_page[] = R"rawliteral(
@@ -108,15 +107,14 @@ const char html_page[] = R"rawliteral(
 <body>
     <h1>Configurazione sensore porta</h1>
     <div class="container">
-        <label for="device_id">Numero (1-255):</label>
-        <input type="number" id="device_id" min="1" max="255" required>
+        <label for="device_id">Numero (1-10):</label>
+        <input type="number" id="device_id" min="1" max="10" required>
         <label for="device_name">Nome dispositivo (max 15 caratteri):</label>
         <input type="text" id="device_name" maxlength="15" required>
         <div id="errore"></div>
         <div class="button-container">
             <button onclick="salvaDati()">Configura</button>
             <button onclick="cancellaDati()">Reset</button>
-            <button onclick="cancellaRegistrazione()">Cancella<br>configurazione</button>
         </div>
     </div>
 
@@ -128,15 +126,15 @@ const char html_page[] = R"rawliteral(
             let device_name = document.getElementById("device_name").value.trim().replace(/\s+/g, "_");
             let errore = document.getElementById("errore");
             errore.innerText = "";
-            
+
             if (!device_id || !device_name) {
                 errore.innerText = "Compila tutti i campi!";
                 return;
             }
 
             let numero = parseInt(device_id);
-            if (isNaN(numero) || numero < 1 || numero > 255) {
-                errore.innerText = "Il numero deve essere tra 1 e 255.";
+            if (isNaN(numero) || numero < 1 || numero > 10) {
+                errore.innerText = "Il numero deve essere tra 1 e 10.";
                 return;
             }
 
@@ -145,7 +143,7 @@ const char html_page[] = R"rawliteral(
                 return;
             }
 
-            fetch(`/save?number=${device_id}&name=${encodeURIComponent(device_name)}`,  {method: 'POST'})
+            fetch(`/save?number=${device_id}&name=${encodeURIComponent(device_name)}`, {method: 'POST'})
                 .then(response => response.text())
                 .then(data => alert(data))
                 .catch(() => errore.innerText = "Errore di connessione al server!");
@@ -157,19 +155,47 @@ const char html_page[] = R"rawliteral(
             document.getElementById("errore").innerText = "";
         }
 
-        function cancellaRegistrazione() {
-            if (confirm("Sei sicuro di voler cancellare la registrazione del dispositivo?")) {
-                fetch('/delete',  {method: 'DELETE'})
-                    .then(response => response.text())
-                    .then(data => alert(data))
-                    .catch(() => alert("Errore nella cancellazione della registrazione!"));
-                cancellaDati();
-            }
-        }
+        window.onload = function() {
+            fetch('/config')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Errore nella richiesta di configurazione.");
+                }
+                return response.json();
+            })
+
+            .then(data => {
+                if (data.device_id) {
+                    document.getElementById("device_id").value = data.device_id;
+                }
+                if (data.device_name) {
+                    document.getElementById("device_name").value = data.device_name;
+                }
+            })
+            .catch(error => {
+                console.error("Errore durante il recupero della configurazione:", error);
+            });
+        };
     </script>
     </body>
     </html>
 )rawliteral";
+
+/* Load current configuration in home page */
+static esp_err_t load_device_config(uint8_t *device_id, char *device_name, size_t len) {
+
+    esp_err_t err = ESP_FAIL;
+
+    err = read_uint8_from_nvs("storage", "device_id", device_id);
+    if (err != ESP_OK)
+        *device_id = 1;
+
+    err = read_string_from_nvs("storage", "device_name", device_name, len);
+    if (err != ESP_OK)
+        snprintf(device_name, len, DEFAULT_SENSOR_NAME);
+
+    return ESP_OK;
+}
 
 /* Get device id */
 uint8_t get_device_id() {
@@ -238,6 +264,26 @@ static esp_err_t home_page_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
 
     httpd_resp_send(req, html_page, HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+/* Config get handler */
+static esp_err_t config_get_handler(httpd_req_t *req) {
+
+    uint8_t device_id = 0;
+    char device_name[DOOR_SENSOR_NAME_LEN] = {'\0'};
+
+    if (load_device_config(&device_id, device_name, sizeof(device_name)) == ESP_OK) {
+
+        char response[RESPONSE_SIZE] = {'\0'};
+        snprintf(response, sizeof(response), "{\"device_id\":%u,\"device_name\":\"%s\"}", device_id, device_name);
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    } else {
+        httpd_resp_set_status(req, "404 Not Found");
+        httpd_resp_send(req, "{}", HTTPD_RESP_USE_STRLEN);
+    }
 
     return ESP_OK;
 }
@@ -315,11 +361,18 @@ static httpd_uri_t save_data = {
     .user_ctx = NULL
 };
 
-static httpd_uri_t delete_data = {
-    .uri = "/delete",
-    .method = HTTP_DELETE,
-    .handler = delete_data_handler,
+static httpd_uri_t uri_favicon = {
+    .uri = "/favicon.ico",
+    .method = HTTP_GET,
+    .handler = favicon_get_handler,
     .user_ctx = NULL
+};
+
+static httpd_uri_t config_uri = {
+    .uri       = "/config",
+    .method    = HTTP_GET,
+    .handler   = config_get_handler,
+    .user_ctx  = NULL
 };
 
 /* Configure access point esp32 door sensor */
