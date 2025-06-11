@@ -37,7 +37,7 @@ esp_err_t init_wifi_sta() {
     }
 
     /* Set wifi mode */
-    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi mode not set");
         return err;
@@ -64,13 +64,13 @@ esp_err_t init_wifi_sta() {
         return err;
     }
 
+    esp_wifi_set_promiscuous(false);
+
     return err;
 }
 
 /* Deinit wifi station */
 void deinit_wifi_sta() {
-
-    esp_wifi_stop();
 
     esp_wifi_deinit();
 
