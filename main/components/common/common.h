@@ -7,6 +7,6 @@
 #define MINOR_COMMON_VER 1
 #define PATCH_COMMON_VER 0
 
-uint16_t calc_crc16(uint8_t *data, uint32_t length);
+uint16_t calc_crc16_msg(uint8_t *data, uint32_t length);
 
 #endif
