@@ -188,6 +188,36 @@ static time_t calculate_awake_time_in_slot(uint8_t slot_index) {
     return CYCLE_TIME_S - offset_in_cycle + slot_start;
 }
 
+/* Calculates the sleep duration needed to wake up at the next available time slot */
+static time_t enter_deep_sleep_until_slot(uint8_t slot_index) {
+
+    uint32_t cycles_passed = 0;
+    time_t sleep_time_s = 0;
+    time_t delta = 0;
+    time_t first_wakeup = 0;
+    time_t now = 0;
+
+    time(&now);
+
+    delta = now - target_time;
+    if (delta > 0) {
+        cycles_passed = delta / CYCLE_TIME_S;
+    }
+
+    //int slot_offset = (slot_index - 1) * SLOT_DURATION_S;
+    first_wakeup = target_time + (cycles_passed + 1) * CYCLE_TIME_S + ((slot_index - 1) * SLOT_DURATION_S);
+    sleep_time_s = first_wakeup - now;
+
+    if (sleep_time_s <= 0) {
+        ESP_LOGW(TAG_MAIN, "Sleep time negativo o zero, sveglia immediata");
+        return -1;
+    }
+
+    ESP_LOGI(TAG_MAIN, "Sleep per %lld secondi. Sensore slot %u si sveglia a %lld", sleep_time_s, slot_index, first_wakeup);
+
+    return sleep_time_s;
+}
+
 /* GPIO debounce filter */
 static void gpio_debounce_filter(gpio_num_t gpio) {
 
