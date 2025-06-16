@@ -236,6 +236,35 @@ static void gpio_debounce_filter(gpio_num_t gpio) {
     return;
 }
 
+/* Power on led */
+static void power_on_led() {
+
+    gpio_set_level(LED_ON_BOARD, 0);
+
+    return;
+}
+
+/* Power off led */
+static void power_off_led() {
+
+    gpio_set_level(LED_ON_BOARD, 1);
+
+    return;
+}
+
+/* Toggle led */
+static void toggle_led(const uint8_t num_flash, const uint16_t time_flash) {
+
+    for(uint8_t i = 0; i <= num_flash; i++) {
+        gpio_set_level(LED_ON_BOARD, 0);
+        vTaskDelay(pdMS_TO_TICKS(time_flash));
+        gpio_set_level(LED_ON_BOARD, 1);
+        vTaskDelay(pdMS_TO_TICKS(time_flash));
+    }
+
+    return;
+}
+
 /* Start configuration device */
 inline static esp_err_t start_configuration(httpd_handle_t server) {
 
