@@ -548,13 +548,6 @@ __attribute__((constructor)) void pre_app_main() {
 void app_main() {
 
     esp_err_t err = ESP_FAIL;
-    char device_name[DEVICE_NAME_SIZE];
-    node_msg_t msg;
-    httpd_handle_t server = NULL;
-
-    /* Clean message buffer */
-    memset(&msg, 0, sizeof(msg));
-    memset(device_name, '\0', sizeof(device_name));
 
     /* Init NVS flash */
     err = init_nvs();
