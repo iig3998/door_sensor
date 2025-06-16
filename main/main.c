@@ -402,6 +402,81 @@ static void configuration_task(void *arg) {
     return;
 }
 
+/* Normal mode task */
+static void normal_mode_task(void *arg) {
+
+    static time_t t_start = 0;
+    static time_t t_end = 0;
+    static time_t time_sleep = 60;
+    static node_msg_t msg;
+
+    /* Clean message buffer */
+    memset(&msg, 0, sizeof(msg));
+
+    /* Init trasmission */
+    init_transmission();
+
+    switch(get_status_registration()) {
+        /* Unregistration mode */
+        case 0:
+            ESP_LOGI(TAG_MAIN, "Unregistration mode. Please registrate device. Restart from 3 seconds");
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            esp_restart();
+        break;
+        /* Registration mode */
+        case 1:
+            ESP_LOGI(TAG_MAIN, "Registration mode");
+            status_node sdr = {
+                .battery_low_detect = check_status_battery(),
+                .state = new_state,
+            };
+
+            while(get_status_registration() != 2) {
+                msg = build_node_msg(ADD, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr);
+                if(!send_message(dst_mac, msg)) {
+                    ESP_LOGW(TAG_MAIN, "Warning, data not sent. Ensure that the gateway is powered on");
+
+                    /* Read variable for new tentative */
+                    sdr.battery_low_detect = check_status_battery();
+                    sdr.state = new_state;
+                }
+
+                /* Retry msg registration if not receive response message after 20 seconds */
+                memset(&msg, 0, sizeof(msg));
+                if (xQueueReceive(node_queue, &msg, pdMS_TO_TICKS(20000)) == pdTRUE) {
+                    if ((msg.header.cmd == ADD) && (calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(uint16_t)) == msg.crc)) {
+                        ESP_LOGI(TAG_MAIN, "Receive ADD command from gateway");
+
+                        set_status_registration(NORMAL_MODE_DOOR_SENSOR);
+
+                        /* Set time for internal rtc */
+                        memcpy(&target_time, msg.payload, sizeof(time_t));
+                        ESP_LOGI(TAG_MAIN, "Target time value: %lld", target_time);
+                        set_rtc_time(target_time);
+                        toggle_led(3, 500);
+
+                        time_sleep = enter_deep_sleep_until_slot(get_device_id());
+                        if (time_sleep > 0) {
+                            /* Enter in deep sleep mode */
+                            enter_in_deep_sleep_mode(time_sleep);
+                        }
+                    } else {
+                        ESP_LOGW(TAG_MAIN, "Warning, command or crc16 not valid, discard message");
+                    }
+                }
+            }
+        break;
+        /* Normal mode */
+        case 2:
+            ESP_LOGI(TAG_MAIN, "Normal mode");
+        break;
+        /* Mode unknown */
+        default:
+            ESP_LOGI(TAG_MAIN, "Mode unknown");
+            esp_restart();
+        break;
+    }
+
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
