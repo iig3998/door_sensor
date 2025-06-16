@@ -49,6 +49,8 @@
 #define SLOT_DURATION_S 10
 
 static QueueHandle_t node_queue;
+static EventGroupHandle_t xEventGroupDoorSensor;
+
 /* MAC address gateway */
 uint8_t dst_mac[MAC_SIZE] = {0x78, 0x42, 0x1C, 0x6A, 0xEF, 0x94};
 uint8_t src_mac[MAC_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
