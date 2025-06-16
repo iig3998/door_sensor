@@ -345,6 +345,34 @@ esp_err_t init_transmission() {
     return err;
 }
 
+/* Enter in deep sleep mode */
+static void enter_in_deep_sleep_mode(time_t time_sleep) {
+
+    ESP_LOGI(TAG_MAIN, "Enter in deep sleep mode");
+
+    /* Enable wakeup from GPIO 25 (RTC_GPIO_6) */
+    esp_sleep_enable_gpio_wakeup();
+
+    if (!new_state) {
+        ESP_LOGI(TAG_MAIN, "Door open");
+        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
+    } else if (new_state) {
+        ESP_LOGI(TAG_MAIN, "Door close");
+        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_LOW_LEVEL));
+    }
+
+    /* Enable timer wakeup every WAKEUP_TIME seconds */
+    esp_sleep_enable_timer_wakeup(time_sleep * 1000000ULL);
+
+    esp_now_deinit();
+
+    deinit_wifi_sta();
+
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    esp_deep_sleep_start();
+}
+
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
