@@ -211,17 +211,6 @@ inline static esp_err_t start_configuration(httpd_handle_t server) {
     return ESP_OK;
 }
 
-inline static void stop_configuration(httpd_handle_t server) {
-
-    stop_webserver(server);
-
-    ESP_LOGI(TAG_MAIN, "Exit from configuration mode");
-
-    gpio_set_level(LED_ON_BOARD, 1);
-
-    return;
-}
-
 esp_err_t init_transmission() {
 
     esp_err_t err = ESP_FAIL;
