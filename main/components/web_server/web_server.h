@@ -20,9 +20,9 @@ void get_device_name(char *device_name, uint8_t len);
 
 uint8_t get_device_id();
 
-uint8_t get_status_registered();
+uint8_t get_status_registration();
 
-void set_status_registered(uint8_t registered);
+void set_status_registration(uint8_t registration);
 
 esp_err_t wifi_init_softap();
 
