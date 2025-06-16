@@ -1,5 +1,7 @@
 #include <string.h>
 #include <assert.h>
+#include <inttypes.h>
+#include <sys/time.h>
 
 #include "esp_sleep.h"
 #include "esp_log.h"
@@ -15,10 +17,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "common.h"
 #include "adc.h"
 #include "nvs_mgmt.h"
 #include "wifi.h"
 #include "node.h"
+#include "rtc.h"
 #include "web_server.h"
 
 #define GPIO_WAKEUP_PIN            GPIO_NUM_25
@@ -29,6 +33,7 @@
 
 #define ESPNOW_WIFI_CHANNEL        7
 #define RETRASMISSION_TIME_MS      50
+
 #define DATA_SENT_SUCCESS          (1 << 0)
 #define DATA_SENT_FAILED           (1 << 1)
 
