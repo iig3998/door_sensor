@@ -373,6 +373,35 @@ static void enter_in_deep_sleep_mode(time_t time_sleep) {
     esp_deep_sleep_start();
 }
 
+/* Configuration task */
+static void configuration_task(void *arg) {
+
+    esp_err_t err = ESP_FAIL;
+    httpd_handle_t server = NULL;
+
+    ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
+
+    err = wifi_init_softap();
+    if (err != ESP_OK)
+        return;
+
+    err = start_webserver(server);
+    if (err != ESP_OK)
+        return;
+
+    gpio_set_level(LED_ON_BOARD, 0);
+
+    while(!check_usb_connection()) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
+    gpio_set_level(LED_ON_BOARD, 1);
+
+    stop_webserver(server);
+
+    return;
+}
+
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
