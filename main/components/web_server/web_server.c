@@ -339,9 +339,10 @@ static esp_err_t save_data_handler(httpd_req_t *req) {
     return ESP_FAIL;
 }
 
+/* favicon get handler */
+static esp_err_t favicon_get_handler(httpd_req_t *req) {
 
-    httpd_resp_set_type(req, "text/plain");
-    httpd_resp_send(req, "Configuration deleted successfully", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, NULL, 0);
 
     return ESP_OK;
 }
