@@ -273,7 +273,7 @@ static esp_err_t home_page_handler(httpd_req_t *req) {
 static esp_err_t config_get_handler(httpd_req_t *req) {
 
     uint8_t device_id = 0;
-    char device_name[DOOR_SENSOR_NAME_LEN] = {'\0'};
+    char device_name[DEVICE_NAME_SIZE] = {'\0'};
 
     if (load_device_config(&device_id, device_name, sizeof(device_name)) == ESP_OK) {
 
