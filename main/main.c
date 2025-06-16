@@ -91,11 +91,8 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
     ESP_LOGI(TAG_MAIN, "Receive callback function");
 
-    node_msg_t resp;
-    ESP_LOGI(TAG_MAIN, "Receive message from %X:%X:%X:%X:%X:%X", recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2], recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
-
     if (!recv_info->src_addr || !data || len <= 0) {
-        ESP_LOGE(TAG_MAIN, "Receive callback arg error");
+        ESP_LOGE(TAG_MAIN, "Error, receive callback arg");
         return;
     }
 
@@ -151,7 +148,7 @@ static bool send_message(uint8_t dest_mac[], node_msg_t msg) {
         /* Send packet */
         err = esp_now_send(dest_mac, (uint8_t *)&msg, sizeof(msg));
         if (err != ESP_OK) {
-            ESP_LOGE(TAG_MAIN, "Error, data not sent ... retry");
+            ESP_LOGE(TAG_MAIN, "Error send: %s", esp_err_to_name(err));
             num_tentative = 0;
         }
         /* Wait until the data is sent */
