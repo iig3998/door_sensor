@@ -455,7 +455,7 @@ esp_err_t start_webserver(httpd_handle_t server) {
         return err;
     }
 
-    err = httpd_register_uri_handler(server, &delete_data);
+    err = httpd_register_uri_handler(server, &uri_favicon);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WEBSERVER, "Error, delete_data function not registered");
         return err;
