@@ -336,15 +336,6 @@ static esp_err_t save_data_handler(httpd_req_t *req) {
     return ESP_FAIL;
 }
 
-/* Delete data page handler */
-static esp_err_t delete_data_handler(httpd_req_t *req) {
-
-    ESP_LOGI(TAG_WEBSERVER, "Delete data page handler");
-
-    /* Clear configuration in storage */
-    save_uint8_to_nvs("storage", "device_id", 0);
-    save_uint8_to_nvs("storage", "registration", 2);
-    save_string_to_nvs("storage", "device_name", "");
 
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "Configuration deleted successfully", HTTPD_RESP_USE_STRLEN);
