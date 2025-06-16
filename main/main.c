@@ -477,6 +477,86 @@ static void normal_mode_task(void *arg) {
         break;
     }
 
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    switch (wakeup_reason) {
+        case ESP_SLEEP_WAKEUP_TIMER:
+            ESP_LOGI(TAG_MAIN, "Wakeup from timer");
+        break;
+        case ESP_SLEEP_WAKEUP_GPIO:
+            ESP_LOGI(TAG_MAIN, "Wakeup from GPIO %u", GPIO_WAKEUP_PIN);
+
+            time_sleep = enter_deep_sleep_until_slot(get_device_id());
+            gpio_debounce_filter(GPIO_WAKEUP_PIN);
+            status_node sdr = {
+                .battery_low_detect = check_status_battery(),
+                .state = new_state,
+            };
+            send_message(dst_mac, build_node_msg(UPDATE, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr));
+
+            /* Enter in deep sleep mode */
+            if(time_sleep > 0) {
+                enter_in_deep_sleep_mode(time_sleep);
+            }
+        break;
+        default:
+            ESP_LOGW(TAG_MAIN, "Warning, source wakeup unknown. May be first boot");
+        break;
+    }
+
+    /* Slot time of 10 seconds */
+    time_t awake_time = calculate_awake_time_in_slot(get_device_id());
+
+    time(&t_start);
+    t_end = t_start;
+    while ((t_end - t_start) < awake_time) {
+
+        /* Receive message from gateway */
+        memset(&msg, 0, sizeof(msg));
+        if (xQueueReceive(node_queue, &msg, pdMS_TO_TICKS(100)) == pdTRUE) {
+            ESP_LOGI(TAG_MAIN, "Receive message from callback function");
+
+            if (calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(uint16_t)) != msg.crc) {
+                ESP_LOGW(TAG_MAIN, "Warning, crc16 not correct discard message");
+            } else {
+
+                gpio_debounce_filter(GPIO_WAKEUP_PIN);
+                status_node sdr = {
+                    .battery_low_detect = check_status_battery(),
+                    .state = new_state,
+                };
+
+                switch (msg.header.cmd) {
+                    case SYNC:
+                        ESP_LOGI(TAG_MAIN, "Receive SYNC command from gateway");
+
+                        memcpy(&target_time, (time_t *)msg.payload, sizeof(time_t));
+                        set_rtc_time(target_time);
+                    break;
+                    case UPDATE:
+                        ESP_LOGI(TAG_MAIN, "Receive UPDATE command from gateway");
+                    break;
+                    default:
+                        ESP_LOGE(TAG_MAIN, "Command not found");
+                    break;
+                }
+
+                msg = build_node_msg(msg.header.cmd, get_device_id(), SENSOR, msg.header.id_msg, src_mac, get_device_name(), &sdr);
+                if(!send_message(dst_mac, msg)) {
+                    ESP_LOGW(TAG_MAIN, "Warning, message not sent");
+                }
+            }
+        }
+
+        time(&t_end);
+        vTaskDelay(pdMS_TO_TICKS(400));
+    }
+
+    /* Enter in deep sleep mode */
+    enter_in_deep_sleep_mode(time_sleep);
+
+    return;
+}
+
 /* Pre app main program */
 __attribute__((constructor)) void pre_app_main() {
 
@@ -569,105 +649,46 @@ void app_main() {
         esp_restart();
     }
 
-    /* Configure device */
-    #if 0
-    err = start_configuration(server);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, configuration mode not started");
-        esp_restart();
+    node_queue = xQueueCreate(NODE_QUEUE_SIZE, sizeof(node_msg_t));
+    if(!node_queue) {
+        ESP_LOGE(TAG_MAIN, "Error, node queue not allocated");
         return;
     }
-    #endif
 
-    init_transmission();
-
-    gpio_debounce_filter(GPIO_WAKEUP_PIN);
-    get_device_name(device_name, DEVICE_NAME_SIZE);
-
-    status_door_sensor sdr = {
-        .battery_low_detect = check_status_battery(),
-        .state = new_state,
-    };
-
-    /* Check status configuration */
-    switch(1) {
-        case UNCONFIGURED_DOOR_SENSOR:
-            ESP_LOGW(TAG_MAIN, "Door sensor is not configured. Please connbect usb cable, restart device and configure it");
-            while(1) {
-                vTaskDelay(pdMS_TO_TICKS(2000));
-            }
-        break;
-        case REGISTRATION_DOOR_SENSOR:
-            while(1) {
-            ESP_LOGI(TAG_MAIN, "Registration door sensor");
-
-            if(send_message(dest_mac, build_cmd_node_msg(ADD, 1, (esp_random() % 256), src_mac, device_name, &sdr))) {
-
-                set_status_registered(3);
-            }
-            vTaskDelay(pdMS_TO_TICKS(2000));
+    /* Start configuration or normal mode */
+    if (check_usb_connection()) {
+        if(xTaskCreate(configuration_task, "configuration_task", 1024 * 3, NULL, 1, NULL) != pdPASS) {
+            ESP_LOGE(TAG_MAIN, "Error, configuration task not started");
+            return;
         }
-
-        break;
-        case DEREGISTRATION_DOOR_SENSOR:
-            ESP_LOGI(TAG_MAIN, "Deregistration door sensor");
-
-            if(send_message(dest_mac, build_cmd_node_msg(DEL, get_device_id(), (esp_random() % 256), src_mac, device_name, &sdr))) {
-                for(uint8_t num_flash = 0; num_flash <= 3; num_flash++) {
-                    gpio_set_level(LED_ON_BOARD, 0);
-                    vTaskDelay(pdMS_TO_TICKS(500));
-                    gpio_set_level(LED_ON_BOARD, 1);
-                    vTaskDelay(pdMS_TO_TICKS(500));
-                }
-                set_status_registered(3);
-            }
-        break;
-        case NORMAL_MODE_DOOR_SENSOR:
-            ESP_LOGI(TAG_MAIN, "Normal mode");
-        break;
-
+    } else  {
+        if(xTaskCreate(normal_mode_task, "normal_mode_task", 1024 * 3, NULL, 1, NULL) != pdPASS) {
+            ESP_LOGE(TAG_MAIN, "Error, normal mode task not started");
+            return;
+        }
     }
-
-    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-    switch (wakeup_reason) {
-        case ESP_SLEEP_WAKEUP_TIMER:
-        case ESP_SLEEP_WAKEUP_GPIO:
-            ESP_LOGI(TAG_MAIN, "Wakeup from timer or GPIO %u", GPIO_WAKEUP_PIN);
-
-            get_device_name(device_name, sizeof(device_name));
-            gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            msg = build_cmd_node_msg(UPDATE, get_device_id(), (esp_random() % 256), src_mac, device_name, &sdr);
-            send_message(dest_mac, msg);
-        break;
-        default:
-            ESP_LOGW(TAG_MAIN, "Warning, source wakeup unknown. First boot");
-        break;
-    }
-
-    /* Enable wakeup from GPIO 25 (RTC_GPIO6) */
-    esp_sleep_enable_gpio_wakeup();
-
-    if (!new_state) {
-        ESP_LOGI(TAG_MAIN, "Door open");
-        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_HIGH_LEVEL));
-    } else if (new_state) {
-        ESP_LOGI(TAG_MAIN, "Door close");
-        ESP_ERROR_CHECK(rtc_gpio_wakeup_enable(GPIO_WAKEUP_PIN, GPIO_INTR_LOW_LEVEL));
-    }
-
-    /* Enable timer wakeup every WAKEUP_TIME seconds */
-    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(WAKEUP_TIME * 1000000));
-
-    esp_now_deinit();
-
-    deinit_wifi_sta();
-
-    ESP_LOGI(TAG_MAIN, "Going to deep sleep mode");
-
-    vTaskDelay(pdMS_TO_TICKS(5));
-
-    /* Entra in deep sleep */
-    esp_deep_sleep_start();
 
     return;
 }
+
+#if 0
+void app_main() {
+
+    time_t t_start = 0;
+    time_t t_end = 0;
+
+    time(&t_start);
+    t_end = t_start;
+    while(t_end - t_start < 10) {
+        ESP_LOGI(TAG_MAIN, "T start: %lld", t_start);
+        time(&t_end);
+        ESP_LOGI(TAG_MAIN, "ESP get time: %lld", esp_timer_get_time());
+        ESP_LOGI(TAG_MAIN, "Time: %lld", t_end - t_start);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    enter_in_deep_sleep_mode(2);
+
+    return;
+}
+#endif
