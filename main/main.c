@@ -268,7 +268,7 @@ static void toggle_led(const uint8_t num_flash, const uint16_t time_flash) {
 /* Start configuration device */
 inline static esp_err_t start_configuration(httpd_handle_t server) {
 
-    if(check_usb_connection()) {
+    if(!check_usb_connection()) {
 
         esp_err_t err = ESP_FAIL;
 
@@ -277,16 +277,18 @@ inline static esp_err_t start_configuration(httpd_handle_t server) {
         err = wifi_init_softap();
         if (err != ESP_OK)
             return err;
-        
+
         err = start_webserver(server);
         if (err != ESP_OK)
             return err;
 
-        gpio_set_level(LED_ON_BOARD, 0);
+        power_on_led();
 
         while(1) {
             vTaskDelay(pdMS_TO_TICKS(500));
         }
+
+        power_off_led();
 
         return err;
     }
