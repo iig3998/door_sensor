@@ -218,21 +218,20 @@ uint8_t get_device_id() {
 }
 
 /* Get device name */
-void get_device_name(char *device_name, uint8_t len) {
+char *get_device_name() {
 
     esp_err_t err = ESP_FAIL;
 
-    if (!device_name) {
-        ESP_LOGE(TAG_WEBSERVER, "Error, destination pointer for device name is null");
-        return;
-    }
+    static char device_name[DOOR_SENSOR_NAME_LEN] = {'\0'};
 
-    err = read_string_from_nvs("storage", "device_name", device_name, len);
+    memset(device_name, '\0', sizeof(device_name));
+    err = read_string_from_nvs("storage", "device_name", device_name, DOOR_SENSOR_NAME_LEN);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_WEBSERVER, "Error, device name not read");
+        ESP_LOGE(TAG_WEBSERVER, "Warning, device name not read. Set default value");
+        strncpy(device_name, (char *)DEFAULT_SENSOR_NAME, strlen(DEFAULT_SENSOR_NAME));
     }
 
-    return;
+    return device_name;
 }
 
 uint8_t get_status_registered() {
