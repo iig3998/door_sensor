@@ -132,7 +132,7 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
 }
 
 /* Send message by espnow protocol */
-static bool send_message(uint8_t dest_mac[], node_msg_t msg) {
+static bool send_message(uint8_t dst_mac[], node_msg_t msg) {
 
     esp_err_t err = ESP_FAIL;
     uint8_t num_tentative = NUMBER_ATTEMPTS;
@@ -141,7 +141,7 @@ static bool send_message(uint8_t dest_mac[], node_msg_t msg) {
     xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
     do {
         /* Send packet */
-        err = esp_now_send(dest_mac, (uint8_t *)&msg, sizeof(msg));
+        err = esp_now_send(dst_mac, (uint8_t *)&msg, sizeof(msg));
         if (err != ESP_OK) {
             ESP_LOGE(TAG_MAIN, "Error send: %s", esp_err_to_name(err));
             num_tentative = 0;
