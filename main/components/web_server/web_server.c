@@ -310,6 +310,9 @@ static esp_err_t save_data_handler(httpd_req_t *req) {
 
             ESP_LOGI(TAG_WEBSERVER, "ID number: %s, Name sensor: %s", device_number, device_name);
 
+            /* Clean status registration */
+            save_uint8_to_nvs("storage", "registration", UNREGISTRATION_DOOR_SENSOR);
+
             /* Clear configuration in storage */
             save_uint8_to_nvs("storage", "device_id", 0);
             save_string_to_nvs("storage", "device_name", "");
