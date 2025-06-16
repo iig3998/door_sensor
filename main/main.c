@@ -159,6 +159,35 @@ static bool send_message(uint8_t dst_mac[], node_msg_t msg) {
     return true;
 }
 
+/* Calculate awake time */
+static time_t calculate_awake_time_in_slot(uint8_t slot_index) {
+
+    time_t now;
+    time_t offset_in_cycle;
+    time_t slot_start;
+    time_t slot_end;
+    time_t delta;
+
+    time(&now);
+
+    delta = now - target_time;
+
+    if (delta < 0)
+        delta = 0;
+
+    offset_in_cycle = delta % CYCLE_TIME_S;
+    slot_start = (slot_index - 1) * SLOT_DURATION_S;
+    slot_end = slot_start + SLOT_DURATION_S;
+
+    if (offset_in_cycle < slot_start) {
+        return slot_start - offset_in_cycle;
+    } else if (offset_in_cycle >= slot_start && offset_in_cycle < slot_end) {
+        return slot_end - offset_in_cycle;
+    }
+
+    return CYCLE_TIME_S - offset_in_cycle + slot_start;
+}
+
 /* GPIO debounce filter */
 static void gpio_debounce_filter(gpio_num_t gpio) {
 
