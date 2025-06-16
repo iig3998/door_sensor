@@ -42,6 +42,7 @@
 
 
 
+static QueueHandle_t node_queue;
 uint8_t dest_mac[MAC_SIZE] = {0x78, 0x42, 0x1C, 0x6A, 0xEF, 0x94};
 uint8_t src_mac[MAC_SIZE] = {0, 0, 0, 0, 0, 0};
 
