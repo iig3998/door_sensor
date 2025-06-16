@@ -229,18 +229,19 @@ char *get_device_name() {
     return device_name;
 }
 
-uint8_t get_status_registered() {
+/* Get status register */
+uint8_t get_status_registration() {
 
     esp_err_t err = ESP_FAIL;
-    uint8_t registered;
+    uint8_t registration;
 
-    err = read_uint8_from_nvs("storage", "registered", &registered);
+    err = read_uint8_from_nvs("storage", "registration", &registration);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_WEBSERVER, "Error, registered not read");
+        ESP_LOGE(TAG_WEBSERVER, "Error, registration not read");
         return 0;
     }
 
-    return registered;
+    return registration;
 }
 
 void set_status_registered(uint8_t registered) {
