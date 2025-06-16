@@ -55,6 +55,7 @@ uint8_t src_mac[MAC_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
+RTC_DATA_ATTR time_t target_time = 0;
 
 static void print_msg(node_msg_t node_msg) {
 
