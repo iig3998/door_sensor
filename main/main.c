@@ -296,6 +296,7 @@ inline static esp_err_t start_configuration(httpd_handle_t server) {
     return ESP_OK;
 }
 
+/* Init trasmission */
 esp_err_t init_transmission() {
 
     esp_err_t err = ESP_FAIL;
@@ -335,14 +336,11 @@ esp_err_t init_transmission() {
         esp_restart();
     }
 
-    #ifdef RECEIVE_CALLBACK_FUNCTION
     err = esp_now_register_recv_cb(espnow_recv_cb);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
         esp_restart();
     }
-    xEventGroupClearBits(xEventGroupDoorSensor, DATA_RECEIVED);
-    #endif
 
     return err;
 }
