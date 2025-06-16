@@ -81,10 +81,10 @@ static void print_msg(node_msg_t node_msg) {
         break;
     }
 
-typedef struct {
-    bool state;
-    bool battery_low_detect;
-} __attribute__((__packed__)) status_door_sensor;
+    ESP_LOGI(TAG_MAIN, "CRC16: %d", node_msg.crc);
+
+    return;
+}
 
 /* Receive callback function */
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
