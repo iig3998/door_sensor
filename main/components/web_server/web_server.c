@@ -312,12 +312,10 @@ static esp_err_t save_data_handler(httpd_req_t *req) {
 
             /* Clear configuration in storage */
             save_uint8_to_nvs("storage", "device_id", 0);
-            save_uint8_to_nvs("storage", "registration", 0);
             save_string_to_nvs("storage", "device_name", "");
 
             /* Save variable in storage */
             save_uint8_to_nvs("storage", "device_id", atoi(device_number));
-            save_uint8_to_nvs("storage", "registration", 1);
             save_string_to_nvs("storage", "device_name", device_name);
 
             httpd_resp_send(req, "Configuration successfuly! Remove USB cable and restart device with battery.", HTTPD_RESP_USE_STRLEN);
