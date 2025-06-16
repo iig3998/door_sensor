@@ -325,8 +325,11 @@ static esp_err_t save_data_handler(httpd_req_t *req) {
             save_uint8_to_nvs("storage", "registration", REGISTRATION_DOOR_SENSOR);
 
             httpd_resp_send(req, "Configuration successfuly! Remove USB cable and restart device with battery.", HTTPD_RESP_USE_STRLEN);
-        } else 
+        } else {
             httpd_resp_send(req, "Registration not successful! Retry please", HTTPD_RESP_USE_STRLEN);
+
+            save_uint8_to_nvs("storage", "registration", UNREGISTRATION_DOOR_SENSOR);
+        }
 
         return ESP_OK;
     }
