@@ -217,10 +217,10 @@ char *get_device_name() {
 
     esp_err_t err = ESP_FAIL;
 
-    static char device_name[DOOR_SENSOR_NAME_LEN] = {'\0'};
+    static char device_name[DEVICE_NAME_SIZE] = {'\0'};
 
     memset(device_name, '\0', sizeof(device_name));
-    err = read_string_from_nvs("storage", "device_name", device_name, DOOR_SENSOR_NAME_LEN);
+    err = read_string_from_nvs("storage", "device_name", device_name, DEVICE_NAME_SIZE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WEBSERVER, "Warning, device name not read. Set default value");
         strncpy(device_name, (char *)DEFAULT_SENSOR_NAME, strlen(DEFAULT_SENSOR_NAME));
