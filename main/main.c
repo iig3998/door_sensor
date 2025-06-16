@@ -44,6 +44,28 @@ uint8_t src_mac[MAC_SIZE] = {0, 0, 0, 0, 0, 0};
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
 
+static void print_msg(node_msg_t node_msg) {
+
+    ESP_LOGI(TAG_MAIN, "Cmd: %u", node_msg.header.cmd);
+    ESP_LOGI(TAG_MAIN, "Node type: %u", node_msg.header.node);
+    ESP_LOGI(TAG_MAIN, "Mac: %02X:%02X:%02X:%02X:%02X:%02X", node_msg.header.mac[0], node_msg.header.mac[1], node_msg.header.mac[2], node_msg.header.mac[3], node_msg.header.mac[4], node_msg.header.mac[5]);
+    ESP_LOGI(TAG_MAIN, "ID node: %u", node_msg.header.id_node);
+    ESP_LOGI(TAG_MAIN, "ID msg: %u", node_msg.header.id_msg);
+    ESP_LOGI(TAG_MAIN, "Name: %s", node_msg.name_node);
+
+    switch(node_msg.header.cmd) {
+        case ADD:
+            for(uint8_t i = 0; i < 8; i++) {
+                ESP_LOGI(TAG_MAIN, "Payload [%u]: %u", i, node_msg.payload[i]);
+            }
+        break;
+        case UPDATE:
+        case SYNC:
+            ESP_LOGI(TAG_MAIN, "State: %u", node_msg.payload[0]);
+            ESP_LOGI(TAG_MAIN, "Battery low detect: %u", node_msg.payload[1]);
+        break;
+    }
+
 typedef struct {
     bool state;
     bool battery_low_detect;
