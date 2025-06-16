@@ -457,7 +457,13 @@ esp_err_t start_webserver(httpd_handle_t server) {
 
     err = httpd_register_uri_handler(server, &uri_favicon);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_WEBSERVER, "Error, delete_data function not registered");
+        ESP_LOGE(TAG_WEBSERVER, "Error, uri_favicon function not registered");
+        return err;
+    }
+
+    err = httpd_register_uri_handler(server, &config_uri);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_WEBSERVER, "Error, config_uri function not registered");
         return err;
     }
 
