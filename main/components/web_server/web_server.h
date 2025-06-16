@@ -9,14 +9,21 @@
 #define WEB_SERVER_MINOR 1
 #define WEB_SERVER_PATCH 0
 
-#define WIFI_SSID            "DOOR_SENSOR"
-#define TAG_WEBSERVER        "WEB_SERVER"
-#define DEVICE_NUMBER_SIZE   4
-#define MAX_STA_CONN         1
-#define DEVICE_NAME_SIZE     16
-#define BUFFER_PARAMETR_SIZE 32
+#define UNREGISTRATION_DOOR_SENSOR 0
+#define REGISTRATION_DOOR_SENSOR   1
+#define NORMAL_MODE_DOOR_SENSOR    2
+#define WIFI_SSID                  "DOOR_SENSOR"
+#define DEVICE_NUMBER_SIZE         4
+#define MAX_AP_CONN                1
+#define DEVICE_NAME_SIZE           16
+#define BUFFER_PARAMETR_SIZE       32
+#define RESPONSE_SIZE              49
+#define DEFAUL_DEVICE_ID           1
+#define DEFAULT_SENSOR_NAME        "Door Sensor"
 
-void get_device_name(char *device_name, uint8_t len);
+#define TAG_WEBSERVER              "WEB_SERVER"
+
+char *get_device_name();
 
 uint8_t get_device_id();
 
