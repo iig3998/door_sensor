@@ -404,17 +404,14 @@ esp_err_t wifi_init_softap() {
         esp_restart();
     }
 
-    wifi_config_t wifi_config;
-    memset(&wifi_config, 0, sizeof(wifi_config));
-
-    snprintf((char *)wifi_config.ap.ssid, strlen("DOOR_SENSOR") + 8, "%s_%s", "DOOR_SENSOR", src_mac);
-    wifi_config.ap.ssid_len = strlen((char *)wifi_config.ap.ssid);
-    wifi_config.ap.max_connection = MAX_STA_CONN;
-    wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-
-    ESP_ERROR_CHECK(mdns_init());
-    ESP_ERROR_CHECK(mdns_hostname_set((char *)wifi_config.ap.ssid));
-    ESP_ERROR_CHECK(mdns_instance_name_set("Web Server"));
+    wifi_config_t wifi_config = {
+        .ap = {
+            .ssid = WIFI_SSID,
+            .ssid_len = strlen(WIFI_SSID),
+            .max_connection = MAX_AP_CONN,
+            .authmode = WIFI_AUTH_OPEN
+        },
+    };
 
     err = esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config);
     if (err != ESP_OK) {
@@ -428,7 +425,7 @@ esp_err_t wifi_init_softap() {
         return err;
     }
 
-    ESP_LOGI(TAG_WEBSERVER, "Access Point run. SSID:%s", WIFI_SSID);
+    ESP_LOGI(TAG_WEBSERVER, "Access Point run with ssid: %s", WIFI_SSID);
 
     return err;
 }
