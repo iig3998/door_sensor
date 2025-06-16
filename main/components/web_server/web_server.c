@@ -11,6 +11,11 @@
 #include "nvs_mgmt.h"
 #include "web_server.h"
 
+#define DOOR_SENSOR_NAME_LEN 15
+#define RESPONSE_SIZE        49
+#define DEFAUL_DEVICE_ID     1
+#define DEFAULT_SENSOR_NAME  "Door Sensor"
+
 const char html_page[] = R"rawliteral(
     <!DOCTYPE html>
     <html lang="it">
