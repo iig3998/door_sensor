@@ -321,7 +321,7 @@ esp_err_t init_transmission() {
     peer.ifidx = WIFI_IF_STA;
     peer.encrypt = false;
 
-    memcpy(peer.peer_addr, dest_mac, MAC_SIZE);
+    memcpy(peer.peer_addr, dst_mac, MAC_SIZE);
     err = esp_now_add_peer(&peer);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, peer not added");
