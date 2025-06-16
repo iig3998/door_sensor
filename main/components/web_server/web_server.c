@@ -210,8 +210,8 @@ uint8_t get_device_id() {
 
     err = read_uint8_from_nvs("storage", "device_id", &device_id);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_WEBSERVER, "Error, device id not read");
-        return 0;
+        ESP_LOGW(TAG_WEBSERVER, "Warning, device id not read Return defualt value");
+        return DEFAUL_DEVICE_ID; /* Return default device_id value */
     }
 
     return device_id;
