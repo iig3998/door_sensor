@@ -96,21 +96,16 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
         return;
     }
 
-    memcpy(&resp, (node_msg_t *)data, sizeof(node_msg_t));
-    switch(resp.header.cmd) {
-        case NACK:
-            ESP_LOGE(TAG_MAIN, "Error, message not received correctly from gateway");
-            return;
-        break;
-        case ACK:
-            ESP_LOGI(TAG_MAIN, "Message received correctly from gateway");
-        break;
-        default:
-            ESP_LOGW(TAG_MAIN, "Warning, command not valid");
-        break;
-    }
+    node_msg_t msg;
+    memcpy(&msg, data, sizeof(node_msg_t));
+    print_msg(msg);
 
-    xEventGroupSetBits(xEventGroupDoorSensor, DATA_RECEIVED);
+    if (xQueueSend(node_queue, &msg, pdMS_TO_TICKS(20)) != pdTRUE) {
+        ESP_LOGW(TAG_MAIN, "Warning, queue is full, discard message");
+        xEventGroupSetBits(xEventGroupDoorSensor, DATA_RECEIVED_FAILED);
+    } else {
+        xEventGroupSetBits(xEventGroupDoorSensor, DATA_RECEIVED_SUCCESS);
+    }
 
     return;
 }
