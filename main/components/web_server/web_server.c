@@ -465,7 +465,7 @@ esp_err_t start_webserver(httpd_handle_t server) {
 }
 
 /* Stop webserver */
-__attribute__((unused)) void stop_webserver(httpd_handle_t server) {
+void stop_webserver(httpd_handle_t server) {
 
     if (!server) {
         ESP_LOGE(TAG_WEBSERVER, "Error, server not allocated");
