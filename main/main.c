@@ -36,11 +36,17 @@
 
 #define DATA_SENT_SUCCESS          (1 << 0)
 #define DATA_SENT_FAILED           (1 << 1)
+#define DATA_RECEIVED_SUCCESS      (1 << 2)
+#define DATA_RECEIVED_FAILED       (1 << 3)
 
+#define WAKEUP_TIME                10 // In seconds
 
 #define MAC_SIZE                   6
 
+#define NODE_QUEUE_SIZE 4
 
+#define CYCLE_TIME_S    60
+#define SLOT_DURATION_S 10
 
 static QueueHandle_t node_queue;
 /* MAC address gateway */
@@ -231,7 +237,7 @@ esp_err_t init_transmission() {
     /* Init espnow */
     err = esp_now_init();
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, ESPNOW not inited");
+        ESP_LOGE(TAG_MAIN, "Error, espnow not inited");
         esp_restart();
     }
 
@@ -244,7 +250,7 @@ esp_err_t init_transmission() {
     memcpy(peer.peer_addr, dest_mac, MAC_SIZE);
     err = esp_now_add_peer(&peer);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, peer not add");
+        ESP_LOGE(TAG_MAIN, "Error, peer not added");
         esp_restart();
     }
 
