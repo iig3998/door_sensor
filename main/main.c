@@ -98,7 +98,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
     node_msg_t msg;
     memcpy(&msg, data, sizeof(node_msg_t));
-    print_msg(msg);
 
     if (xQueueSend(node_queue, &msg, pdMS_TO_TICKS(20)) != pdTRUE) {
         ESP_LOGW(TAG_MAIN, "Warning, queue is full, discard message");
