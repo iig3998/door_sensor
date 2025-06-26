@@ -17,7 +17,7 @@
 #define MAX_AP_CONN                1
 #define DEVICE_NAME_SIZE           16
 #define BUFFER_PARAMETR_SIZE       32
-#define RESPONSE_SIZE              49
+#define RESPONSE_SIZE              50
 #define DEFAUL_DEVICE_ID           1
 #define DEFAULT_SENSOR_NAME        "Door Sensor"
 
