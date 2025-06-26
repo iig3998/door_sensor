@@ -669,25 +669,3 @@ void app_main() {
 
     return;
 }
-
-#if 0
-void app_main() {
-
-    time_t t_start = 0;
-    time_t t_end = 0;
-
-    time(&t_start);
-    t_end = t_start;
-    while(t_end - t_start < 10) {
-        ESP_LOGI(TAG_MAIN, "T start: %lld", t_start);
-        time(&t_end);
-        ESP_LOGI(TAG_MAIN, "ESP get time: %lld", esp_timer_get_time());
-        ESP_LOGI(TAG_MAIN, "Time: %lld", t_end - t_start);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
-    enter_in_deep_sleep_mode(2);
-
-    return;
-}
-#endif
