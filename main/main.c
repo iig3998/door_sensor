@@ -655,7 +655,7 @@ void app_main() {
     }
 
     /* Start configuration or normal mode */
-    if (check_usb_connection()) {
+    if (!check_usb_connection()) {
         if(xTaskCreate(configuration_task, "configuration_task", 1024 * 3, NULL, 1, NULL) != pdPASS) {
             ESP_LOGE(TAG_MAIN, "Error, configuration task not started");
             return;
