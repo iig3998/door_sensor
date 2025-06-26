@@ -430,7 +430,7 @@ static void normal_mode_task(void *arg) {
                 .state = new_state,
             };
 
-            while(get_status_registration() != 2) {
+            while(get_status_registration() != NORMAL_MODE_DOOR_SENSOR) {
                 msg = build_node_msg(ADD, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr);
                 if(!send_message(dst_mac, msg)) {
                     ESP_LOGW(TAG_MAIN, "Warning, data not sent. Ensure that the gateway is powered on");
