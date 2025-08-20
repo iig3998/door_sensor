@@ -12,7 +12,7 @@
 
 #define MAC_SIZE    6
 #define NAME_LEN    15
-#define PAYLOAD_LEN 8
+#define PAYLOAD_LEN 2
 
 /* Define node type */
 typedef enum __attribute__((__packed__)) {
@@ -28,7 +28,6 @@ typedef enum __attribute__((__packed__)) {
 	DEL,
 	GET,
 	UPDATE,
-	SYNC,
 	ALARM,
 	START_SIREN,
 	STOP_SIREN,
