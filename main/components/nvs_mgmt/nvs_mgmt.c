@@ -9,7 +9,7 @@
 /* Print version library */
 void print_nvs_mgmt_version() {
 
-    ESP_LOGI(TAG_NVS_MGMT, "Sensor version: %u.%u.%u", MAJOR_NVS_MGMT_VER, MINOR_NVS_MGMT_VER, PATCH_NVS_MGMT_VER);
+    ESP_LOGD(TAG_NVS_MGMT, "Sensor version: %u.%u.%u", MAJOR_NVS_MGMT_VER, MINOR_NVS_MGMT_VER, PATCH_NVS_MGMT_VER);
 
     return;
 }
@@ -30,7 +30,7 @@ esp_err_t init_nvs() {
     /* Create storage section inside nvs */
     err = nvs_open("storage", NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGI(TAG_NVS_MGMT, "Nvs storage not initied");
+        ESP_LOGD(TAG_NVS_MGMT, "Nvs storage not initied");
     }
 
     nvs_close(handle);
@@ -46,19 +46,19 @@ esp_err_t save_uint32_to_nvs(const char *namespace, const char *key, uint32_t va
     
     err = nvs_open(namespace, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs memory not open");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs memory not open");
         return err;
     }
 
     err = nvs_set_u32(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not saved successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not saved successfully", key);
         nvs_close(handle);
         return err;
     }
 
     nvs_commit(handle);
-    ESP_LOGI(TAG_NVS_MGMT, "Varible %s saved successfully", key);
+    ESP_LOGD(TAG_NVS_MGMT, "Varible %s saved successfully", key);
 
     nvs_close(handle);
 
@@ -73,19 +73,19 @@ esp_err_t save_uint16_to_nvs(const char *namespace, const char *key, uint16_t va
     
     err = nvs_open(namespace, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs memory not open");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs memory not open");
         return err;
     }
 
     err = nvs_set_u16(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not saved successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not saved successfully", key);
         nvs_close(handle);
         return err;
     }
 
     nvs_commit(handle);
-    ESP_LOGI(TAG_NVS_MGMT, "Varible %s saved successfully", key);
+    ESP_LOGD(TAG_NVS_MGMT, "Varible %s saved successfully", key);
 
     nvs_close(handle);
 
@@ -100,19 +100,19 @@ esp_err_t save_uint8_to_nvs(const char *namespace, const char *key, uint8_t valu
     
     err = nvs_open(namespace, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs memory not open");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs memory not open");
         return err;
     }
 
     err = nvs_set_u8(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not saved successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not saved successfully", key);
         nvs_close(handle);
         return err;
     }
 
     nvs_commit(handle);
-    ESP_LOGI(TAG_NVS_MGMT, "Varible %s saved successfully", key);
+    ESP_LOGD(TAG_NVS_MGMT, "Varible %s saved successfully", key);
 
     nvs_close(handle);
 
@@ -127,19 +127,19 @@ esp_err_t save_string_to_nvs(const char *namespace, const char *key, char* str) 
     
     err = nvs_open(namespace, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs memory not open");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs memory not open");
         return err;
     }
 
     err = nvs_set_str(handle, key, str);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, string %s not saved successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, string %s not saved successfully", key);
         nvs_close(handle);
         return err;
     }
 
     nvs_commit(handle);
-    ESP_LOGI(TAG_NVS_MGMT, "Varible %s saved successfully", key);
+    ESP_LOGD(TAG_NVS_MGMT, "Varible %s saved successfully", key);
 
     nvs_close(handle);
 
@@ -154,13 +154,13 @@ esp_err_t read_uint32_from_nvs(const char *namespace, const char *key, uint32_t 
 
     err = nvs_open(namespace, NVS_READONLY, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs not opened");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs not opened");
         return err;
     }
 
     err = nvs_get_u32(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not read successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not read successfully", key);
     }
 
     nvs_close(handle);
@@ -176,13 +176,13 @@ esp_err_t read_uint16_from_nvs(const char *namespace, const char *key, uint16_t 
 
     err = nvs_open(namespace, NVS_READONLY, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs not opened");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs not opened");
         return err;
     }
 
     err = nvs_get_u16(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not read successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not read successfully", key);
     }
 
     nvs_close(handle);
@@ -198,13 +198,13 @@ esp_err_t read_uint8_from_nvs(const char *namespace, const char *key, uint8_t *v
 
     err = nvs_open(namespace, NVS_READONLY, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs not opened");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs not opened");
         return err;
     }
 
     err = nvs_get_u8(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not read successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not read successfully", key);
     }
 
     nvs_close(handle);
@@ -219,19 +219,19 @@ esp_err_t read_string_from_nvs(const char *namespace, const char *key, char *str
     nvs_handle_t handle;
 
     if (!str) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, destination string in null");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, destination string in null");
         return err;
     }
 
     err = nvs_open(namespace, NVS_READONLY, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs not opened");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs not opened");
         return err;
     }
 
     err = nvs_get_str(handle, key, str, &len);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, string %s not read successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, string %s not read successfully", key);
     }
 
     nvs_close(handle);
@@ -247,13 +247,13 @@ esp_err_t delete_key_from_nvs(const char *namespace, const char *key) {
 
     err = nvs_open(namespace, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, nvs not opened");
+        ESP_LOGD(TAG_NVS_MGMT, "Error, nvs not opened");
         return err;
     }
 
     err = nvs_erase_key(handle, key);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_NVS_MGMT, "Error, variable %s not deleted successfully", key);
+        ESP_LOGD(TAG_NVS_MGMT, "Error, variable %s not deleted successfully", key);
         nvs_close(handle);
         return err;
     }
