@@ -69,8 +69,6 @@ bool check_usb_connection() {
     float voltage = 0;
 
     voltage = read_adc_voltage(ADC_CHANNEL_4) / 1000.0;
-
-    ESP_LOGI(TAG_ADC, "Voltage usb connection: %f", voltage);
     if (voltage <= 3.0)
         return true;
 
