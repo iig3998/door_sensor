@@ -72,6 +72,8 @@ esp_err_t init_wifi_sta() {
 /* Deinit wifi station */
 void deinit_wifi_sta() {
 
+    esp_wifi_stop();
+
     esp_wifi_deinit();
 
     return;
