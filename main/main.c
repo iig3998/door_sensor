@@ -1,90 +1,54 @@
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <inttypes.h>
-#include <sys/time.h>
-
-#include "esp_sleep.h"
-#include "esp_log.h"
-#include "esp_now.h"
-#include "esp_timer.h"
-#include "esp_random.h"
-#include "esp_mac.h"
-#include "esp_wifi.h"
-
-#include "driver/gpio.h"
-#include "driver/rtc_io.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "common.h"
-#include "adc.h"
-#include "nvs_mgmt.h"
+#include "esp_log.h"
+#include "esp_mac.h"
+#include "esp_system.h"
+#include "esp_now.h"
+#include "esp_random.h"
+#include "esp_wifi.h"
+#include "esp_sleep.h"
+#include "esp_console.h"
+
 #include "wifi.h"
+#include "adc.h"
 #include "node.h"
-#include "rtc.h"
-#include "web_server.h"
+#include "common.h"
+#include "conf.h"
 
-#define GPIO_WAKEUP_PIN            GPIO_NUM_25
-#define LED_ON_BOARD               GPIO_NUM_5
-#define DEBOUNCE_COUNTER           50
-#define NUMBER_ATTEMPTS            3
-#define TAG_MAIN                   "DOOR_SENSOR"
+#include "driver/gpio.h"
+#include "driver/rtc_io.h"
 
-#define ESPNOW_WIFI_CHANNEL        7
-#define RETRASMISSION_TIME_MS      50
+#define DEBOUNCE_COUNTER      50
+#define NUMBER_ATTEMPTS       3
+#define ESPNOW_WIFI_CHANNEL   7
+#define RETRASMISSION_TIME_MS 50
 
-#define DATA_SENT_SUCCESS          (1 << 0)
-#define DATA_SENT_FAILED           (1 << 1)
-#define DATA_RECEIVED_SUCCESS      (1 << 2)
-#define DATA_RECEIVED_FAILED       (1 << 3)
+#define DATA_SENT_SUCCESS     (1 << 0)
+#define DATA_SENT_FAILED      (1 << 1)
+#define DATA_RECEIVED_SUCCESS (1 << 2)
+#define DATA_RECEIVED_FAILED  (1 << 3)
 
-#define WAKEUP_TIME                10 // In seconds
+#define NODE_QUEUE_SIZE       4
 
-#define MAC_SIZE                   6
+#define GPIO_WAKEUP_PIN       GPIO_NUM_25
+#define LED_ON_BOARD          GPIO_NUM_5
 
-#define NODE_QUEUE_SIZE 4
-
-#define CYCLE_TIME_S    60
-#define SLOT_DURATION_S 10
-
-static QueueHandle_t node_queue;
-static EventGroupHandle_t xEventGroupDoorSensor;
-
-/* MAC address gateway */
-uint8_t dst_mac[MAC_SIZE] = {0x78, 0x42, 0x1C, 0x6A, 0xEF, 0x94};
-uint8_t src_mac[MAC_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+#define TAG_MAIN              "MAIN"
 
 RTC_DATA_ATTR bool new_state = 0;
 RTC_DATA_ATTR bool old_state = 0;
-RTC_DATA_ATTR time_t target_time = 0;
 
-static void print_msg(node_msg_t node_msg) {
+/* MAC address gateway */
+static uint8_t dst_mac[MAC_SIZE] = {0x78, 0x42, 0x1C, 0x6A, 0xEF, 0x94};
+static uint8_t src_mac[MAC_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    ESP_LOGI(TAG_MAIN, "Cmd: %u", node_msg.header.cmd);
-    ESP_LOGI(TAG_MAIN, "Node type: %u", node_msg.header.node);
-    ESP_LOGI(TAG_MAIN, "Mac: %02X:%02X:%02X:%02X:%02X:%02X", node_msg.header.mac[0], node_msg.header.mac[1], node_msg.header.mac[2], node_msg.header.mac[3], node_msg.header.mac[4], node_msg.header.mac[5]);
-    ESP_LOGI(TAG_MAIN, "ID node: %u", node_msg.header.id_node);
-    ESP_LOGI(TAG_MAIN, "ID msg: %u", node_msg.header.id_msg);
-    ESP_LOGI(TAG_MAIN, "Name: %s", node_msg.name_node);
-
-    switch(node_msg.header.cmd) {
-        case ADD:
-            for(uint8_t i = 0; i < 8; i++) {
-                ESP_LOGI(TAG_MAIN, "Payload [%u]: %u", i, node_msg.payload[i]);
-            }
-        break;
-        case UPDATE:
-        case SYNC:
-            ESP_LOGI(TAG_MAIN, "State: %u", node_msg.payload[0]);
-            ESP_LOGI(TAG_MAIN, "Battery low detect: %u", node_msg.payload[1]);
-        break;
-    }
-
-    ESP_LOGI(TAG_MAIN, "CRC16: %d", node_msg.crc);
-
-    return;
-}
+static QueueHandle_t node_queue;
+static EventGroupHandle_t xEventGroupDoorSensor;
 
 /* Receive callback function */
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
@@ -92,7 +56,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
     ESP_LOGI(TAG_MAIN, "Receive callback function");
 
     if (!recv_info->src_addr || !data || len <= 0) {
-        ESP_LOGE(TAG_MAIN, "Error, receive callback arg");
         return;
     }
 
@@ -101,9 +64,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
     if (xQueueSend(node_queue, &msg, pdMS_TO_TICKS(20)) != pdTRUE) {
         ESP_LOGW(TAG_MAIN, "Warning, queue is full, discard message");
-        xEventGroupSetBits(xEventGroupDoorSensor, DATA_RECEIVED_FAILED);
-    } else {
-        xEventGroupSetBits(xEventGroupDoorSensor, DATA_RECEIVED_SUCCESS);
     }
 
     return;
@@ -130,91 +90,291 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
     return;
 }
 
-/* Send message by espnow protocol */
+/* Send message */
 static bool send_message(uint8_t dst_mac[], node_msg_t msg) {
 
     esp_err_t err = ESP_FAIL;
-    uint8_t num_tentative = NUMBER_ATTEMPTS;
     EventBits_t uxBits;
 
-    xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
-    do {
-        /* Send packet */
+    for (uint8_t i = 0; i < NUMBER_ATTEMPTS; i++) {
+
+        xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
+
         err = esp_now_send(dst_mac, (uint8_t *)&msg, sizeof(msg));
         if (err != ESP_OK) {
-            ESP_LOGE(TAG_MAIN, "Error send: %s", esp_err_to_name(err));
-            num_tentative = 0;
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
         }
-        /* Wait until the data is sent */
-        uxBits = xEventGroupWaitBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED, pdTRUE, pdFALSE, portMAX_DELAY);
-        num_tentative--;
-        vTaskDelay(pdMS_TO_TICKS(RETRASMISSION_TIME_MS));
+
+        /* Waits callback function result */
+        uxBits = xEventGroupWaitBits(
+            xEventGroupDoorSensor,
+            DATA_SENT_SUCCESS | DATA_SENT_FAILED,
+            pdTRUE,
+            pdFALSE,
+            pdMS_TO_TICKS(RETRASMISSION_TIME_MS)
+        );
+
+        /* Success */
+        if (uxBits & DATA_SENT_SUCCESS) {
+            return true;
+        }
+
+        /* Failed */
+        if (uxBits & DATA_SENT_FAILED) {
+            ESP_LOGW(TAG_MAIN, "Send failed, retrying... (%u/%u)", i + 1, NUMBER_ATTEMPTS);
+        } else {
+            ESP_LOGW(TAG_MAIN, "Timeout waiting for send result, retrying... (%u/%u)", i + 1, NUMBER_ATTEMPTS);
+        }
     }
-    while((uxBits & DATA_SENT_FAILED) && num_tentative > 0);
 
-    if(!num_tentative)
-        return false;
-
-    return true;
+    return false;
 }
 
-/* Calculate awake time */
-static time_t calculate_awake_time_in_slot(uint8_t slot_index) {
+/* Toggle led */
+static void toggle_led(const uint16_t num_flash, const uint16_t time_flash) {
 
-    time_t now;
-    time_t offset_in_cycle;
-    time_t slot_start;
-    time_t slot_end;
-    time_t delta;
-
-    time(&now);
-
-    delta = now - target_time;
-
-    if (delta < 0)
-        delta = 0;
-
-    offset_in_cycle = delta % CYCLE_TIME_S;
-    slot_start = (slot_index - 1) * SLOT_DURATION_S;
-    slot_end = slot_start + SLOT_DURATION_S;
-
-    if (offset_in_cycle < slot_start) {
-        return slot_start - offset_in_cycle;
-    } else if (offset_in_cycle >= slot_start && offset_in_cycle < slot_end) {
-        return slot_end - offset_in_cycle;
+    for(uint16_t i = 0; i < num_flash; i++) {
+        gpio_set_level(LED_ON_BOARD, 0);
+        vTaskDelay(pdMS_TO_TICKS(time_flash));
+        gpio_set_level(LED_ON_BOARD, 1);
+        vTaskDelay(pdMS_TO_TICKS(time_flash));
     }
 
-    return CYCLE_TIME_S - offset_in_cycle + slot_start;
+    return;
 }
 
-/* Calculates the sleep duration needed to wake up at the next available time slot */
-static time_t enter_deep_sleep_until_slot(uint8_t slot_index) {
+/* Set command */
+static int cmd_set(int argc, char **argv) {
 
-    uint32_t cycles_passed = 0;
-    time_t sleep_time_s = 0;
-    time_t delta = 0;
-    time_t first_wakeup = 0;
-    time_t now = 0;
-
-    time(&now);
-
-    delta = now - target_time;
-    if (delta > 0) {
-        cycles_passed = delta / CYCLE_TIME_S;
-    }
-
-    //int slot_offset = (slot_index - 1) * SLOT_DURATION_S;
-    first_wakeup = target_time + (cycles_passed + 1) * CYCLE_TIME_S + ((slot_index - 1) * SLOT_DURATION_S);
-    sleep_time_s = first_wakeup - now;
-
-    if (sleep_time_s <= 0) {
-        ESP_LOGW(TAG_MAIN, "Sleep time negativo o zero, sveglia immediata");
+    if(argc != 3) {
+        printf("Uso: set device_name | device_id <name> | <id>\r\n");
         return -1;
     }
 
-    ESP_LOGI(TAG_MAIN, "Sleep per %lld secondi. Sensore slot %u si sveglia a %lld", sleep_time_s, slot_index, first_wakeup);
+    if(!strncmp(argv[1], "device_name", strlen("device_name"))) {
+        printf("Imposta nome dispositivo\r\n");
+        if (strlen(argv[2]) > 0 && strlen(argv[2]) <= 15) {
+            set_device_name(argv[2]);
+        } else {
+            printf("Nome dispositivo non valido\r\n");
+        }
 
-    return sleep_time_s;
+    } else if(!strncmp(argv[1], "device_id", strlen("device_id"))) {
+        printf("Imposta id dispositivo\n");
+        if (atoi(argv[2]) > 0 && atoi(argv[2]) <= 10) {
+            set_device_id(atoi(argv[2]));
+        } else {
+            printf("Valore id non valido\r\n");
+        }
+    } else {
+        printf("Argomento non valido: %s\r\n", argv[1]);
+        return -1;
+    }
+
+    return 0;
+}
+
+/* Del command */
+static int cmd_del(int argc, char **argv) {
+
+    if (argc != 2) {
+        printf("Uso: del name | id\r\n");
+        return -1;
+    }
+
+    if(get_status_registration() == UNREGISTRATION_DOOR_SENSOR) {
+        if (!strncmp(argv[1], "device_name", strlen("device_name"))) {
+            printf("Cancella il nome del dispositivo\r\n");
+            del_device_name();
+        } else if (!strncmp(argv[1], "device_id", strlen("device_id"))) {
+            printf("Cancella id dispositivo\r\n");
+            del_device_id();
+        } else {
+            printf("Argomento non valido: %s\r\n", argv[1]);
+            return -1;
+        }
+    } else {
+        printf("Attenzione, prima di cancellare la configurazione del dispositvo deregistrarlo dalla centrale\r\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* Get command */
+static int cmd_get(int argc, char **argv) {
+
+    if (argc != 2) {
+        printf("Uso: get device_name | device_id | mac\r\n");
+        return -1;
+    }
+
+    if (!strncmp(argv[1], "device_name", strlen("device_name"))) {
+        char *name = get_device_name();
+        if(name)
+            printf("Nome dispsitivo: %s\r\n", name);
+        else
+            printf("Nome dispositivo non impostato\r\n");
+
+    } else if (!strncmp(argv[1], "device_id", strlen("device_id"))) {
+        uint8_t id = get_device_id();
+        if(id)
+            printf("Id dispisitivo: %u\r\n", get_device_id());
+        else
+            printf("Id del dispositivo non impostato\r\n");
+
+    } else if (!strncmp(argv[1], "device_mac", strlen("mac"))) {
+        printf("MAC address: %02X:%02X:%02X:%02X:%02X:%02X\r\n", src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4], src_mac[5]);
+    }
+
+    return 0;
+}
+
+/* Registration/Unregistratioon command */
+static int cmd_register(int argc, char **argv) {
+
+    if (argc != 2) {
+        printf("Uso: register | deregister device\r\n");
+        return -1;
+    }
+
+    const char *cmd = argv[0];
+    cmd_type action;
+
+    if (!strncmp(cmd, "register", strlen("register")))
+        action = ADD;
+    else if (!strncmp(cmd, "deregister", strlen("deregister")))
+        action = DEL;
+    else {
+        printf("Comando non valido.\r\n");
+        return -1;
+    }
+
+    if(get_device_name() && get_device_id()) {
+
+        node_msg_t msg_sent = build_node_msg(
+            action,
+            get_device_id(),
+            SENSOR,
+            esp_random() % 256,
+            src_mac,
+            get_device_name(),
+            NULL
+        );
+
+        if (!send_message(dst_mac, msg_sent)) {
+            printf("%s non avvenuta. Assicurarsi che la centralina sia accesa e raggiungibile.\r\n", action == ADD ? "Registrazione" : "Deregistrazione");
+            return -1;
+        } else {
+            node_msg_t msg_received;
+            if(xQueueReceive(node_queue, &msg_received, pdMS_TO_TICKS(2000)) == pdTRUE) {
+                if ((msg_received.header.cmd == action) && (calc_crc16_msg((uint8_t *)&msg_received, sizeof(msg_received) - sizeof(uint16_t)) == msg_received.crc) && (msg_sent.header.id_msg == msg_received.header.id_msg)) {
+                    ESP_LOGI(TAG_MAIN, "Receive %s command from gateway", action == ADD ? "add" : "del");
+
+                    if(action == ADD) {
+                        set_status_registration(REGISTRATION_DOOR_SENSOR);
+                    } else if(action == DEL) {
+                        set_status_registration(UNREGISTRATION_DOOR_SENSOR);
+                    }
+
+                    toggle_led(3, 500);
+
+                } else {
+                    printf("Attenzione, il messaggio ricevuto dalla centralina è corrotto. Riprovare.\r\n");
+                    return -1;
+                }
+            } else {
+                printf("%s non avvenuta. Ricontrollare la configurazione del dispositivo.\r\n", action == ADD ? "Registrazione" : "Deregistrazione");
+                return -1;
+            }
+        }
+        
+    } else {
+        printf("Nome del dispositivo o identificativo non impostato.\r\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* List command available for manage device */
+static void register_commands(void) {
+
+    const esp_console_cmd_t set_cmd = {
+        .command = "set",
+        .help = "Imposta il nome del dispositivo o il suo identificativo",
+        .hint = NULL,
+        .func = &cmd_set,
+    };
+
+    esp_console_cmd_register(&set_cmd);
+
+    const esp_console_cmd_t del_cmd = {
+        .command = "del",
+        .help = "Cancella il nome del dispositivo o il suo identificativo",
+        .hint = NULL,
+        .func = &cmd_del,
+    };
+
+    esp_console_cmd_register(&del_cmd);
+
+    const esp_console_cmd_t get_cmd = {
+        .command = "get",
+        .help = "Ritorna la configurazione del dispositivo",
+        .hint = NULL,
+        .func = &cmd_get,
+    };
+
+    esp_console_cmd_register(&get_cmd);
+
+    const esp_console_cmd_t registration_cmd = {
+        .command = "register",
+        .help = "Registra il dispositivo alla centrale",
+        .hint = NULL,
+        .func = &cmd_register,
+    };
+
+    esp_console_cmd_register(&registration_cmd);
+
+    const esp_console_cmd_t deregistration_cmd = {
+        .command = "deregister",
+        .help = "Deregistra il dispositivo dalla centrale",
+        .hint = NULL,
+        .func = &cmd_register,
+    };
+
+    esp_console_cmd_register(&deregistration_cmd);
+
+    return;
+
+}
+
+/* Init console */
+static int8_t init_console() {
+
+    esp_err_t err = ESP_FAIL;
+    esp_console_repl_t *repl = NULL;
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+
+    repl_config.prompt = "domotichouse$";
+    repl_config.max_cmdline_length = 100;
+
+    esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+
+    err = esp_console_new_repl_uart(&hw_config, &repl_config, &repl);
+    if(err != ESP_OK)
+        return -1;
+
+    esp_console_register_help_command();
+
+    err = esp_console_start_repl(repl);
+    if(err != ESP_OK)
+        return -1;
+
+    register_commands();
+
+    return 0;
 }
 
 /* GPIO debounce filter */
@@ -230,122 +390,14 @@ static void gpio_debounce_filter(gpio_num_t gpio) {
             counter --;
 
         old_state = new_state;
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 
     return;
-}
-
-/* Power on led */
-static void power_on_led() {
-
-    gpio_set_level(LED_ON_BOARD, 0);
-
-    return;
-}
-
-/* Power off led */
-static void power_off_led() {
-
-    gpio_set_level(LED_ON_BOARD, 1);
-
-    return;
-}
-
-/* Toggle led */
-static void toggle_led(const uint8_t num_flash, const uint16_t time_flash) {
-
-    for(uint8_t i = 0; i <= num_flash; i++) {
-        gpio_set_level(LED_ON_BOARD, 0);
-        vTaskDelay(pdMS_TO_TICKS(time_flash));
-        gpio_set_level(LED_ON_BOARD, 1);
-        vTaskDelay(pdMS_TO_TICKS(time_flash));
-    }
-
-    return;
-}
-
-/* Start configuration device */
-inline static esp_err_t start_configuration(httpd_handle_t server) {
-
-    if(!check_usb_connection()) {
-
-        esp_err_t err = ESP_FAIL;
-
-        ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
-
-        err = wifi_init_softap();
-        if (err != ESP_OK)
-            return err;
-
-        err = start_webserver(server);
-        if (err != ESP_OK)
-            return err;
-
-        power_on_led();
-
-        while(1) {
-            vTaskDelay(pdMS_TO_TICKS(500));
-        }
-
-        power_off_led();
-
-        return err;
-    }
-
-    return ESP_OK;
-}
-
-/* Init trasmission */
-esp_err_t init_transmission() {
-
-    esp_err_t err = ESP_FAIL;
-    esp_now_peer_info_t peer;
-
-    /* Init WiFi station */
-    err = init_wifi_sta();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, WiFi not configurated");
-        esp_restart();
-    }
-
-    /* Init espnow */
-    err = esp_now_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, espnow not inited");
-        esp_restart();
-    }
-
-    /* Add peer to list */
-    memset(&peer, 0, sizeof(esp_now_peer_info_t));
-    peer.channel = ESPNOW_WIFI_CHANNEL;
-    peer.ifidx = WIFI_IF_STA;
-    peer.encrypt = false;
-
-    memcpy(peer.peer_addr, dst_mac, MAC_SIZE);
-    err = esp_now_add_peer(&peer);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, peer not added");
-        esp_restart();
-    }
-
-    /* Register send callback function */
-    err = esp_now_register_send_cb(espnow_send_cb);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
-        esp_restart();
-    }
-
-    err = esp_now_register_recv_cb(espnow_recv_cb);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered");
-        esp_restart();
-    }
-
-    return err;
 }
 
 /* Enter in deep sleep mode */
-static void enter_in_deep_sleep_mode(time_t time_sleep) {
+static void enter_in_deep_sleep_mode(uint16_t time_sleep) {
 
     ESP_LOGI(TAG_MAIN, "Enter in deep sleep mode");
 
@@ -367,191 +419,181 @@ static void enter_in_deep_sleep_mode(time_t time_sleep) {
 
     deinit_wifi_sta();
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(20));
 
     esp_deep_sleep_start();
 }
 
-/* Configuration task */
-static void configuration_task(void *arg) {
+/* Init trasmission */
+esp_err_t init_transmission() {
 
     esp_err_t err = ESP_FAIL;
-    httpd_handle_t server = NULL;
+    esp_now_peer_info_t peer;
 
-    ESP_LOGI(TAG_MAIN, "Enter in configuration mode");
-
-    err = wifi_init_softap();
-    if (err != ESP_OK)
-        return;
-
-    err = start_webserver(server);
-    if (err != ESP_OK)
-        return;
-
-    gpio_set_level(LED_ON_BOARD, 0);
-
-    while(!check_usb_connection()) {
-        vTaskDelay(pdMS_TO_TICKS(500));
+    /* Init WiFi station */
+    err = init_wifi_sta();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, WiFi not configurated. Restart device");
+        return err;
     }
 
-    gpio_set_level(LED_ON_BOARD, 1);
+    /* Init espnow */
+    err = esp_now_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, espnow not inited");
+        return err;
+    }
 
-    stop_webserver(server);
+    /* Add peer to list */
+    memset(&peer, 0, sizeof(esp_now_peer_info_t));
+    peer.channel = ESPNOW_WIFI_CHANNEL;
+    peer.ifidx = WIFI_IF_STA;
+    peer.encrypt = false;
 
-    return;
+    memcpy(peer.peer_addr, dst_mac, MAC_SIZE);
+    err = esp_now_add_peer(&peer);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, peer not added");
+        return err;
+    }
+
+    /* Register send callback function */
+    err = esp_now_register_send_cb(espnow_send_cb);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered. Restart device.");
+        return err;
+    }
+
+    err = esp_now_register_recv_cb(espnow_recv_cb);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_MAIN, "Error, send callback function not registered. Restart device.");
+        return err;
+    }
+
+    return err;
 }
+
+#define MIN_SLEEP_MIN 10
+#define MAX_SLEEP_MIN 13
 
 /* Normal mode task */
 static void normal_mode_task(void *arg) {
 
-    static time_t t_start = 0;
-    static time_t t_end = 0;
-    static time_t time_sleep = 60;
-    static node_msg_t msg;
+    node_msg_t msg_sent;
+    node_msg_t msg_received;
+    status_node sdr;
 
-    /* Clean message buffer */
-    memset(&msg, 0, sizeof(msg));
-
-    /* Init trasmission */
-    init_transmission();
+    memset(&msg_sent, 0, sizeof(msg_sent));
+    memset(&msg_received, 0, sizeof(msg_received));
+    memset(&sdr, 0, sizeof(sdr));
 
     switch(get_status_registration()) {
         /* Unregistration mode */
-        case 0:
-            ESP_LOGI(TAG_MAIN, "Unregistration mode. Please registrate device. Restart from 3 seconds");
-            vTaskDelay(pdMS_TO_TICKS(3000));
-            esp_restart();
+        case UNREGISTRATION_DOOR_SENSOR:
+            ESP_LOGI(TAG_MAIN, "Unregistration mode. Please registrate device.");
+            while(1) {
+                gpio_set_level(LED_ON_BOARD, 0);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                gpio_set_level(LED_ON_BOARD, 1);
+                vTaskDelay(pdMS_TO_TICKS(500));
+            }            
         break;
         /* Registration mode */
-        case 1:
+        case REGISTRATION_DOOR_SENSOR:
             ESP_LOGI(TAG_MAIN, "Registration mode");
-            status_node sdr = {
-                .battery_low_detect = check_status_battery(),
-                .state = new_state,
-            };
 
-            while(get_status_registration() != NORMAL_MODE_DOOR_SENSOR) {
-                msg = build_node_msg(ADD, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr);
-                if(!send_message(dst_mac, msg)) {
-                    ESP_LOGW(TAG_MAIN, "Warning, data not sent. Ensure that the gateway is powered on");
-
-                    /* Read variable for new tentative */
-                    sdr.battery_low_detect = check_status_battery();
-                    sdr.state = new_state;
-                }
-
-                /* Retry msg registration if not receive response message after 20 seconds */
-                memset(&msg, 0, sizeof(msg));
-                if (xQueueReceive(node_queue, &msg, pdMS_TO_TICKS(20000)) == pdTRUE) {
-                    if ((msg.header.cmd == ADD) && (calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(uint16_t)) == msg.crc)) {
-                        ESP_LOGI(TAG_MAIN, "Receive ADD command from gateway");
-
-                        set_status_registration(NORMAL_MODE_DOOR_SENSOR);
-
-                        /* Set time for internal rtc */
-                        memcpy(&target_time, msg.payload, sizeof(time_t));
-                        ESP_LOGI(TAG_MAIN, "Target time value: %lld", target_time);
-                        set_rtc_time(target_time);
-                        toggle_led(3, 500);
-
-                        time_sleep = enter_deep_sleep_until_slot(get_device_id());
-                        if (time_sleep > 0) {
-                            /* Enter in deep sleep mode */
-                            enter_in_deep_sleep_mode(time_sleep);
-                        }
-                    } else {
-                        ESP_LOGW(TAG_MAIN, "Warning, command or crc16 not valid, discard message");
-                    }
-                }
-            }
-        break;
-        /* Normal mode */
-        case 2:
-            ESP_LOGI(TAG_MAIN, "Normal mode");
-        break;
-        /* Mode unknown */
-        default:
-            ESP_LOGI(TAG_MAIN, "Mode unknown");
-            esp_restart();
-        break;
-    }
-
-    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-    switch (wakeup_reason) {
-        case ESP_SLEEP_WAKEUP_TIMER:
-            ESP_LOGI(TAG_MAIN, "Wakeup from timer");
-        break;
-        case ESP_SLEEP_WAKEUP_GPIO:
-            ESP_LOGI(TAG_MAIN, "Wakeup from GPIO %u", GPIO_WAKEUP_PIN);
-
-            time_sleep = enter_deep_sleep_until_slot(get_device_id());
             gpio_debounce_filter(GPIO_WAKEUP_PIN);
-            status_node sdr = {
-                .battery_low_detect = check_status_battery(),
-                .state = new_state,
-            };
-            send_message(dst_mac, build_node_msg(UPDATE, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr));
+            sdr.battery_low_detect = check_status_battery();
+            sdr.state = new_state;
 
-            /* Enter in deep sleep mode */
-            if(time_sleep > 0) {
-                enter_in_deep_sleep_mode(time_sleep);
+            esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+            switch (wakeup_reason) {
+                case ESP_SLEEP_WAKEUP_TIMER:
+                    ESP_LOGI(TAG_MAIN, "Wakeup from timer");
+                    msg_sent = build_node_msg(UPDATE, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr);
+                break;
+                case ESP_SLEEP_WAKEUP_GPIO:
+                    ESP_LOGI(TAG_MAIN, "Wakeup from GPIO %u", GPIO_WAKEUP_PIN);
+                    msg_sent = build_node_msg(ACTIVE_ALARM, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr);
+                break;
+                default:
+                    ESP_LOGW(TAG_MAIN, "Warning, source wakeup unknown. May be first boot");
+                    msg_sent = build_node_msg(UPDATE, get_device_id(), SENSOR, (esp_random() % 256), src_mac, get_device_name(), &sdr);
+                break;
             }
-        break;
-        default:
-            ESP_LOGW(TAG_MAIN, "Warning, source wakeup unknown. May be first boot");
         break;
     }
 
-    /* Slot time of 10 seconds */
-    time_t awake_time = calculate_awake_time_in_slot(get_device_id());
+    /* Temporal window */
+    for(uint8_t retry = 0; retry < 3; retry ++) {
 
-    time(&t_start);
-    t_end = t_start;
-    while ((t_end - t_start) < awake_time) {
-
-        /* Receive message from gateway */
-        memset(&msg, 0, sizeof(msg));
-        if (xQueueReceive(node_queue, &msg, pdMS_TO_TICKS(100)) == pdTRUE) {
-            ESP_LOGI(TAG_MAIN, "Receive message from callback function");
-
-            if (calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(uint16_t)) != msg.crc) {
-                ESP_LOGW(TAG_MAIN, "Warning, crc16 not correct discard message");
-            } else {
-
-                gpio_debounce_filter(GPIO_WAKEUP_PIN);
-                status_node sdr = {
-                    .battery_low_detect = check_status_battery(),
-                    .state = new_state,
-                };
-
-                switch (msg.header.cmd) {
-                    case SYNC:
-                        ESP_LOGI(TAG_MAIN, "Receive SYNC command from gateway");
-
-                        memcpy(&target_time, (time_t *)msg.payload, sizeof(time_t));
-                        set_rtc_time(target_time);
+        /* Send message */
+        if(send_message(dst_mac, msg_sent)) {
+            if(xQueueReceive(node_queue, &msg_received, pdMS_TO_TICKS(2000)) == pdTRUE) {
+                if ((msg_received.header.cmd == UPDATE) && (calc_crc16_msg((uint8_t *)&msg_received, sizeof(msg_received) - sizeof(uint16_t)) == msg_received.crc) && (msg_sent.header.id_msg == msg_received.header.id_msg)) {
+                    ESP_LOGI(TAG_MAIN, "Receive response from gateway. Exit");
                     break;
-                    case UPDATE:
-                        ESP_LOGI(TAG_MAIN, "Receive UPDATE command from gateway");
-                    break;
-                    default:
-                        ESP_LOGE(TAG_MAIN, "Command not found");
-                    break;
-                }
-
-                msg = build_node_msg(msg.header.cmd, get_device_id(), SENSOR, msg.header.id_msg, src_mac, get_device_name(), &sdr);
-                if(!send_message(dst_mac, msg)) {
-                    ESP_LOGW(TAG_MAIN, "Warning, message not sent");
                 }
             }
         }
-
-        time(&t_end);
-        vTaskDelay(pdMS_TO_TICKS(400));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 
+    uint32_t sleep_sec = (MIN_SLEEP_MIN * 60) + ((esp_random() + get_device_id()) % ((MAX_SLEEP_MIN - MIN_SLEEP_MIN + 1) * 60));
+    
+    ESP_LOGI(TAG_MAIN, "Sensor sleeping for %lu seconds", sleep_sec);
+
     /* Enter in deep sleep mode */
-    enter_in_deep_sleep_mode(time_sleep);
+    enter_in_deep_sleep_mode(sleep_sec);
+
+    return;
+}
+
+/* Main program */
+void app_main(void) {
+
+    esp_err_t err = ESP_FAIL;
+
+    init_conf();
+
+    /* Init network interface */
+    err = esp_netif_init();
+    if (err != ESP_OK) {
+        esp_restart();
+    }
+
+    err = esp_event_loop_create_default();
+    if (err != ESP_OK) {
+        esp_restart();
+    }
+
+    xEventGroupDoorSensor = xEventGroupCreate();
+    if (!xEventGroupDoorSensor) {
+        ESP_LOGE(TAG_MAIN, "Error, event group not created. Restart device");
+        esp_restart();
+    }
+
+    node_queue = xQueueCreate(NODE_QUEUE_SIZE, sizeof(node_msg_t));
+    if(!node_queue) {
+        ESP_LOGE(TAG_MAIN, "Error, node queue not allocated");
+        esp_restart();
+    }
+
+    err = init_transmission();
+    if (err != ESP_OK) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_restart();
+    }
+
+    /* Start cli or normal mode */
+    if (!check_usb_connection()) {
+        init_console();
+    } else  {
+        if(xTaskCreate(normal_mode_task, "normal_mode_task", 1024 * 2, NULL, 1, NULL) != pdPASS) {
+            ESP_LOGE(TAG_MAIN, "Error, normal mode task not started. Restart device");
+            esp_restart();
+        }
+    }
 
     return;
 }
@@ -564,16 +606,10 @@ __attribute__((constructor)) void pre_app_main() {
     /* Suppress boot messages */
     esp_deep_sleep_disable_rom_logging();
 
-    xEventGroupDoorSensor = xEventGroupCreate();
-    if (!xEventGroupDoorSensor) {
-        ESP_LOGE(TAG_MAIN, "Error, event group not created");
-        esp_restart();
-    }
-
     /* Read MAC address */
     err = esp_read_mac(src_mac, ESP_MAC_WIFI_STA);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, MAC address not read");
+        ESP_LOGE(TAG_MAIN, "Error, MAC address not read. Restart device");
         esp_restart();
     }
 
@@ -619,53 +655,6 @@ __attribute__((constructor)) void pre_app_main() {
 
     /* Hold on GPIO 25 */
     rtc_gpio_hold_en(GPIO_WAKEUP_PIN);
-
-    return;
-}
-
-/* Main program */
-void app_main() {
-
-    esp_err_t err = ESP_FAIL;
-
-    /* Init NVS flash */
-    err = init_nvs();
-    if(err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, NVS not inited");
-        esp_restart();
-    }
-
-    /* Init network interface */
-    err = esp_netif_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, network interface not init");
-        esp_restart();
-    }
-
-    err = esp_event_loop_create_default();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG_MAIN, "Error, event loop not init");
-        esp_restart();
-    }
-
-    node_queue = xQueueCreate(NODE_QUEUE_SIZE, sizeof(node_msg_t));
-    if(!node_queue) {
-        ESP_LOGE(TAG_MAIN, "Error, node queue not allocated");
-        return;
-    }
-
-    /* Start configuration or normal mode */
-    if (!check_usb_connection()) {
-        if(xTaskCreate(configuration_task, "configuration_task", 1024 * 3, NULL, 1, NULL) != pdPASS) {
-            ESP_LOGE(TAG_MAIN, "Error, configuration task not started");
-            return;
-        }
-    } else  {
-        if(xTaskCreate(normal_mode_task, "normal_mode_task", 1024 * 3, NULL, 1, NULL) != pdPASS) {
-            ESP_LOGE(TAG_MAIN, "Error, normal mode task not started");
-            return;
-        }
-    }
 
     return;
 }
