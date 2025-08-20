@@ -12,13 +12,14 @@
 #define UNREGISTRATION_DOOR_SENSOR 0
 #define REGISTRATION_DOOR_SENSOR   1
 #define NORMAL_MODE_DOOR_SENSOR    2
+
 #define WIFI_SSID                  "DOOR_SENSOR"
 #define DEVICE_NUMBER_SIZE         4
-#define MAX_AP_CONN                1
 #define DEVICE_NAME_SIZE           16
 #define BUFFER_PARAMETR_SIZE       32
 #define RESPONSE_SIZE              50
-#define DEFAUL_DEVICE_ID           1
+
+#define DEFAUL_DEVICE_ID           0
 #define DEFAULT_SENSOR_NAME        "Door Sensor"
 
 #define TAG_WEBSERVER              "WEB_SERVER"

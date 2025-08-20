@@ -191,8 +191,10 @@ static esp_err_t load_device_config(uint8_t *device_id, char *device_name, size_
         *device_id = 1;
 
     err = read_string_from_nvs("storage", "device_name", device_name, len);
-    if (err != ESP_OK)
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG_WEBSERVER, "Warning, device name not read. Return defualt value");
         snprintf(device_name, len, DEFAULT_SENSOR_NAME);
+    }
 
     return ESP_OK;
 }
@@ -205,7 +207,7 @@ uint8_t get_device_id() {
 
     err = read_uint8_from_nvs("storage", "device_id", &device_id);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG_WEBSERVER, "Warning, device id not read Return defualt value");
+        ESP_LOGW(TAG_WEBSERVER, "Warning, device id not read. Return defualt value");
         return DEFAUL_DEVICE_ID; /* Return default device_id value */
     }
 
@@ -223,7 +225,7 @@ char *get_device_name() {
     err = read_string_from_nvs("storage", "device_name", device_name, DEVICE_NAME_SIZE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WEBSERVER, "Warning, device name not read. Set default value");
-        strncpy(device_name, (char *)DEFAULT_SENSOR_NAME, strlen(DEFAULT_SENSOR_NAME));
+        return NULL;
     }
 
     return device_name;
@@ -409,7 +411,7 @@ esp_err_t wifi_init_softap() {
         .ap = {
             .ssid = WIFI_SSID,
             .ssid_len = strlen(WIFI_SSID),
-            .max_connection = MAX_AP_CONN,
+            .max_connection = 1,
             .authmode = WIFI_AUTH_OPEN
         },
     };
