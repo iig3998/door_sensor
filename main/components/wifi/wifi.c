@@ -2,11 +2,12 @@
 #include <string.h>
 
 #include "esp_log.h"
-#include "esp_err.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
 
 #include "wifi.h"
+
+#define TAG_WIFI "WIFI"
 
 /* Print wifi version */
 void print_wifi_version() {
@@ -17,7 +18,7 @@ void print_wifi_version() {
 }
 
 /* Init wifi in station mode */
-esp_err_t init_wifi_sta() {
+esp_err_t init_wifi_sta(uint8_t wifi_channel) {
 
     esp_err_t err = ESP_FAIL;
 
@@ -51,7 +52,7 @@ esp_err_t init_wifi_sta() {
     }
 
     /* Set wifi */
-    err = esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+    err = esp_wifi_set_channel(wifi_channel, WIFI_SECOND_CHAN_NONE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "Error, wifi channel not set");
         return err;
@@ -70,11 +71,15 @@ esp_err_t init_wifi_sta() {
 }
 
 /* Deinit wifi station */
-void deinit_wifi_sta() {
+esp_err_t deinit_wifi_sta() {
 
-    esp_wifi_stop();
+    esp_err_t err = ESP_FAIL;
+    
+    err = esp_wifi_stop();
+    if (err != ESP_OK)
+        return err;
 
     esp_wifi_deinit();
 
-    return;
+    return err;
 }
