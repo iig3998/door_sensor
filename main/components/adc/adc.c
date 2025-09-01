@@ -63,17 +63,5 @@ bool check_status_battery() {
     return false;
 }
 
-/* Check usb connection */
-bool check_usb_connection() {
-
-    float voltage = 0;
-
-    voltage = read_adc_voltage(ADC_CHANNEL_4) / 1000.0;
-    if (voltage <= 3.0)
-        return true;
-
-    return false;
-}
-
 
 
