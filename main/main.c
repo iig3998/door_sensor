@@ -25,7 +25,7 @@
 
 #define DEBOUNCE_COUNTER      50
 #define NUMBER_ATTEMPTS       3
-#define ESPNOW_WIFI_CHANNEL   7
+#define ESPNOW_WIFI_CHANNEL   11
 #define RETRASMISSION_TIME_MS 50
 
 #define DATA_SENT_SUCCESS     (1 << 0)
