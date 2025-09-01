@@ -1,10 +1,10 @@
 #ifndef NODE_H
 #define NODE_H
 
+#pragma once
+
 #include <stdint.h>
 #include <stdbool.h>
-
-#pragma once
 
 #define MAJOR_NODE_VER 0
 #define MINOR_NODE_VER 1

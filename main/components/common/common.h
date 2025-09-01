@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#pragma once
+
 #include <stdint.h>
 
 #define MAJOR_COMMON_VER 0

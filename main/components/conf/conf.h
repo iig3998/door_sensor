@@ -1,6 +1,8 @@
 #ifndef CONF_H
 #define CONF_H
 
+#pragma once
+
 #include <stdio.h>
 #include <stdint.h>
 
