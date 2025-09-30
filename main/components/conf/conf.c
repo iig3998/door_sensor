@@ -1,18 +1,10 @@
-#include <stdio.h>
 #include <string.h>
 
-#include "driver/uart.h"
-#include "esp_console.h"
-#include "esp_vfs_dev.h"
-#include "linenoise/linenoise.h"
 #include "esp_log.h"
-#include "esp_system.h"
-
+#include "nvs_flash.h"
 #include "nvs_mgmt.h"
 
 #include "conf.h"
-
-
 
 #define DEVICE_NAME_SIZE 15
 
@@ -125,15 +117,16 @@ int8_t set_status_registration(uint8_t registration) {
 }
 
 /* Get status register */
-int8_t get_status_registration() {
+uint8_t get_status_registration() {
 
     esp_err_t err = ESP_FAIL;
     uint8_t registration;
 
     err = read_uint8_from_nvs("storage", "registration", &registration);
-    if (err != ESP_OK) {
+    if (err != ESP_OK || err == ESP_ERR_NVS_NOT_FOUND) {
         ESP_LOGD(TAG_CLI, "Error, impossible read registration value");
-        return -1;
+        set_status_registration(UNREGISTRATION_DOOR_SENSOR);
+        return UNREGISTRATION_DOOR_SENSOR;
     }
 
     return registration;
