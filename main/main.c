@@ -26,7 +26,7 @@
 #define DEBOUNCE_COUNTER      50
 #define NUMBER_ATTEMPTS       3
 #define ESPNOW_WIFI_CHANNEL   11
-#define RETRASMISSION_TIME_MS 50
+#define RETRASMISSION_TIME_MS 500
 
 #define DATA_SENT_SUCCESS     (1 << 0)
 #define DATA_SENT_FAILED      (1 << 1)
@@ -35,8 +35,12 @@
 
 #define NODE_QUEUE_SIZE       4
 
-#define GPIO_WAKEUP_PIN       GPIO_NUM_25
-#define LED_ON_BOARD          GPIO_NUM_5
+#define MIN_SLEEP_MIN         10
+#define MAX_SLEEP_MIN         13
+
+#define GPIO_WAKEUP_PIN       GPIO_NUM_32
+#define LED_ON_BOARD          GPIO_NUM_22
+#define BUTTON                GPIO_NUM_19
 
 #define TAG_MAIN              "MAIN"
 
@@ -90,6 +94,33 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
     return;
 }
 
+/* Print message */
+static void print_msg(node_msg_t node_msg) {
+
+    ESP_LOGI(TAG_MAIN, "Cmd: %u", node_msg.header.cmd);
+    ESP_LOGI(TAG_MAIN, "Node type: %u", node_msg.header.node);
+    ESP_LOGI(TAG_MAIN, "Mac: %02X:%02X:%02X:%02X:%02X:%02X", node_msg.header.mac[0], node_msg.header.mac[1], node_msg.header.mac[2], node_msg.header.mac[3], node_msg.header.mac[4], node_msg.header.mac[5]);
+    ESP_LOGI(TAG_MAIN, "ID node: %u", node_msg.header.id_node);
+    ESP_LOGI(TAG_MAIN, "ID msg: %u", node_msg.header.id_msg);
+    ESP_LOGI(TAG_MAIN, "Name: %s", node_msg.name_node);
+
+    switch(node_msg.header.cmd) {
+        case ADD:
+            for(uint8_t i = 0; i < 2; i++) {
+                ESP_LOGI(TAG_MAIN, "Payload [%u]: %u", i, node_msg.payload[i]);
+            }
+        break;
+        case UPDATE:
+            ESP_LOGI(TAG_MAIN, "State: %u", node_msg.payload[0]);
+            ESP_LOGI(TAG_MAIN, "Battery low detect: %u", node_msg.payload[1]);
+        break;
+    }
+
+    ESP_LOGI(TAG_MAIN, "CRC16: %d", node_msg.crc);
+
+    return;
+}
+
 /* Send message */
 static bool send_message(uint8_t dst_mac[], node_msg_t msg) {
 
@@ -100,6 +131,7 @@ static bool send_message(uint8_t dst_mac[], node_msg_t msg) {
 
         xEventGroupClearBits(xEventGroupDoorSensor, DATA_SENT_SUCCESS | DATA_SENT_FAILED);
 
+        print_msg(msg);
         err = esp_now_send(dst_mac, (uint8_t *)&msg, sizeof(msg));
         if (err != ESP_OK) {
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -401,7 +433,7 @@ static void enter_in_deep_sleep_mode(uint16_t time_sleep) {
 
     ESP_LOGI(TAG_MAIN, "Enter in deep sleep mode");
 
-    /* Enable wakeup from GPIO 25 (RTC_GPIO_6) */
+    /* Enable wakeup from GPIO 32 */
     esp_sleep_enable_gpio_wakeup();
 
     if (!new_state) {
@@ -431,7 +463,7 @@ esp_err_t init_transmission() {
     esp_now_peer_info_t peer;
 
     /* Init WiFi station */
-    err = init_wifi_sta();
+    err = init_wifi_sta(ESPNOW_WIFI_CHANNEL);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_MAIN, "Error, WiFi not configurated. Restart device");
         return err;
@@ -472,9 +504,6 @@ esp_err_t init_transmission() {
 
     return err;
 }
-
-#define MIN_SLEEP_MIN 10
-#define MAX_SLEEP_MIN 13
 
 /* Normal mode task */
 static void normal_mode_task(void *arg) {
@@ -553,6 +582,9 @@ static void normal_mode_task(void *arg) {
 void app_main(void) {
 
     esp_err_t err = ESP_FAIL;
+    uint8_t counter = DEBOUNCE_COUNTER;
+    uint8_t gpio_new_state = 0;
+    uint8_t gpio_old_state = 0;
 
     init_conf();
 
@@ -585,8 +617,20 @@ void app_main(void) {
         esp_restart();
     }
 
+    gpio_old_state = gpio_get_level(BUTTON);
+    while(counter > 0) {
+        gpio_new_state = gpio_get_level(BUTTON);
+        if (gpio_new_state != gpio_old_state)
+            counter = DEBOUNCE_COUNTER;
+        else
+            counter --;
+
+        gpio_old_state = gpio_new_state;
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+
     /* Start cli or normal mode */
-    if (!check_usb_connection()) {
+    if (gpio_new_state && gpio_old_state) {
         init_console();
     } else  {
         if(xTaskCreate(normal_mode_task, "normal_mode_task", 1024 * 2, NULL, 1, NULL) != pdPASS) {
@@ -613,34 +657,34 @@ __attribute__((constructor)) void pre_app_main() {
         esp_restart();
     }
 
-    /* Isolate alls GPIOs unused */
+    /* Isolate alls RTC GPIOs unused */
     rtc_gpio_isolate(GPIO_NUM_0);
+    rtc_gpio_isolate(GPIO_NUM_2);
+
+    rtc_gpio_isolate(GPIO_NUM_4);
 
     rtc_gpio_isolate(GPIO_NUM_12);
     rtc_gpio_isolate(GPIO_NUM_13);
     rtc_gpio_isolate(GPIO_NUM_14);
+    rtc_gpio_isolate(GPIO_NUM_15);
 
     rtc_gpio_isolate(GPIO_NUM_26);
     rtc_gpio_isolate(GPIO_NUM_27);
 
-    rtc_gpio_isolate(GPIO_NUM_32);
     rtc_gpio_isolate(GPIO_NUM_33);
     rtc_gpio_isolate(GPIO_NUM_34);
     rtc_gpio_isolate(GPIO_NUM_35);
     rtc_gpio_isolate(GPIO_NUM_36);
-    rtc_gpio_isolate(GPIO_NUM_37);
-    rtc_gpio_isolate(GPIO_NUM_38);
-    rtc_gpio_isolate(GPIO_NUM_39);
 
     assert(rtc_gpio_is_valid_gpio(GPIO_WAKEUP_PIN) == true);
 
-    /* Configure GPIO 25 for reed switch */
+    /* Configure GPIO 32 for reed switch */
     ESP_ERROR_CHECK(rtc_gpio_init(GPIO_WAKEUP_PIN));
     ESP_ERROR_CHECK(rtc_gpio_set_direction(GPIO_WAKEUP_PIN, RTC_GPIO_MODE_INPUT_ONLY));
-    ESP_ERROR_CHECK(rtc_gpio_pullup_dis(GPIO_WAKEUP_PIN));
-    ESP_ERROR_CHECK(rtc_gpio_pulldown_en(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_pullup_en(GPIO_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_pulldown_dis(GPIO_WAKEUP_PIN));
 
-    /* Configure GPIO 5 for led on board */
+    /* Configure GPIO 22 for led on board */
     const gpio_config_t config_led = {
         .intr_type = GPIO_INTR_DISABLE,
         .pin_bit_mask = BIT(LED_ON_BOARD),
@@ -653,8 +697,21 @@ __attribute__((constructor)) void pre_app_main() {
     gpio_set_level(LED_ON_BOARD, 1);
     ESP_ERROR_CHECK(gpio_config(&config_led));
 
-    /* Hold on GPIO 25 */
+    /* Configure GPIO 19 for button on board */
+    const gpio_config_t config_button = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .pin_bit_mask = BIT(BUTTON),
+        .mode = GPIO_MODE_INPUT,
+        .pull_down_en = GPIO_PULLDOWN_ENABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+    };
+
+    ESP_ERROR_CHECK(gpio_config(&config_button));
+
+    /* Hold on GPIO 32 */
     rtc_gpio_hold_en(GPIO_WAKEUP_PIN);
 
     return;
 }
+
+
