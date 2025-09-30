@@ -9,7 +9,7 @@
 /* Print version library */
 void print_nvs_mgmt_version() {
 
-    ESP_LOGD(TAG_NVS_MGMT, "Sensor version: %u.%u.%u", MAJOR_NVS_MGMT_VER, MINOR_NVS_MGMT_VER, PATCH_NVS_MGMT_VER);
+    ESP_LOGD(TAG_NVS_MGMT, "Nvs mgmt version: %u.%u.%u", MAJOR_NVS_MGMT_VER, MINOR_NVS_MGMT_VER, PATCH_NVS_MGMT_VER);
 
     return;
 }
@@ -31,6 +31,7 @@ esp_err_t init_nvs() {
     err = nvs_open("storage", NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         ESP_LOGD(TAG_NVS_MGMT, "Nvs storage not initied");
+        return err;
     }
 
     nvs_close(handle);
