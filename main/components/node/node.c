@@ -44,7 +44,7 @@ node_msg_t build_node_msg(cmd_type cmd, uint8_t id_node, node_type node, uint8_t
         ESP_LOGI(TAG_NODE, "Battery low detect: %u", msg.payload[1]);
     }
 
-    msg.crc = calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(msg.crc));
+    msg.crc = calc_crc16_msg((uint8_t *)&msg, sizeof(msg) - sizeof(uint16_t));
 
     return msg;
 }
